@@ -231,7 +231,7 @@ Chapter 11 of the charter expects the language to be extended and revised by suc
 
 > **Each version is named for a linguist whose thesis that version embodies.**
 
-`v1 = Gisaburo` — verbs do not conjugate. Candidates in the line: Tesnière (valency, actants), Hjelmslev (the category of case), Pāṇini (kāraka), Dowty (proto-roles), Talmy (force dynamics), Wierzbicka (semantic primes), Kamp (discourse representation — for whichever generation adds the dialogue layer).
+`v1 = Gisaburo` — verbs do not conjugate. The full roster is kept in [`docs/version-names.md`](docs/version-names.md), organized by what a version would have to do to earn each name.
 
 **JA** — 本企画は **Charles J. Fillmore**（1929–2014）に、そして最初の言語仕様は **清瀬義三郎則府**（1931–2017）に献名されている。どちらも装飾ではなく、それぞれが発見した設計の半分を名指している。
 
@@ -249,7 +249,7 @@ Chapter 11 of the charter expects the language to be extended and revised by suc
 
 > **各バージョンは、その世代が体現する主張を論じた言語学者の名を冠する。**
 
-`v1 = Gisaburo` ── 動詞は活用しない。系列の候補：Tesnière（結合価・actant）、Hjelmslev（格の範疇）、Pāṇini（kāraka）、Dowty（原型役割）、Talmy（力動性）、Wierzbicka（意味素）、Kamp（談話表示 ── 対話層を追加する世代に）。
+`v1 = Gisaburo` ── 動詞は活用しない。名簿の全体は [`docs/version-names.md`](docs/version-names.md) に置く。**その名を得るために各世代が何をしなければならないか**で整理してある。
 
 ---
 
@@ -258,6 +258,7 @@ Chapter 11 of the charter expects the language to be extended and revised by suc
 | File | Contents |
 |---|---|
 | [`docs/core-thesis.md`](docs/core-thesis.md) | **Design charter (current).** The central claim, architecture, verifier, recursive loop, falsifiable propositions. / **設計憲章（現行）。** 中心命題、アーキテクチャ、検証器、再帰ループ、反証可能な命題 |
+| [`docs/version-names.md`](docs/version-names.md) | **Version codename roster.** Linguists whose theses future specifications could embody, and the rule for assigning them. / **バージョン・コードネーム名簿。** 各世代が体現しうる主張と、その割り当て規則 |
 | [`docs/overview.md`](docs/overview.md) | Original 5-chapter draft. Ch. 2–4 (language specification) remain valid as *means*; ch. 1 and 5 are superseded by `core-thesis.md`. / 初期草稿。第2〜4章（言語仕様）は手段として有効。第1・5章は `core-thesis.md` が置き換える |
 
 ---
