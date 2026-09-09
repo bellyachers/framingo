@@ -1,4 +1,10 @@
-# Simplese
+# The Fillmore Project
+
+```
+The Fillmore Project     フィルモア計画        the undertaking
+  └─ Fillmore            フィルモア            the language (lineage)
+       └─ Gisaburo       ギサブロー            v1 specification
+```
 
 **A designed formal language for models that separate logic from knowledge — so that hallucination becomes *mechanically detectable*, not merely less frequent.**
 
@@ -17,7 +23,7 @@
 2. **Undetectable hallucination.** A fabricated fact and a correct one are structurally identical at the surface — both fluent, both from the same stochastic process. Nothing outside the model can tell them apart.
 3. **Unauditable reasoning.** A natural-language chain of thought may be post-hoc confabulation. There is no guarantee it corresponds to the computation that produced the answer.
 
-Simplese dissolves the fusion:
+Fillmore dissolves the fusion:
 
 > **The model learns logic only. It holds no factual knowledge.**
 > **Knowledge is retrieved at inference time via function calling and placed in context.**
@@ -29,7 +35,7 @@ Simplese dissolves the fusion:
 2. **幻覚の検出不能性。** 捏造された事実と正しい事実は、表層において構造的に同一である。どちらも流暢で、同じ確率過程から生成される。モデルの外側からは判別できない。
 3. **監査不能性。** 自然言語のChain-of-Thoughtは事後的な作話でありうる。実際の計算経路と一致している保証はない。
 
-Simpleseはこの融合を解体する。
+Fillmoreはこの融合を解体する。
 
 > **モデルには論理だけを学習させる。事実知識は一切持たせない。**
 > **知識は推論時にFunction Callingで取得し、コンテクストに載せる。**
@@ -48,9 +54,9 @@ Simpleseはこの融合を解体する。
 >
 > **A token traceable to none of these is, by definition, a hallucination — and is detectable by string matching.**
 
-In natural language this constraint cannot be written down, because deciding "derives from context" itself requires understanding. In Simplese, entities appear as normalized identifiers, so the check reduces to set operations.
+In natural language this constraint cannot be written down, because deciding "derives from context" itself requires understanding. In Fillmore, entities appear as normalized identifiers, so the check reduces to set operations.
 
-This is the same kind of invention as a **type system**. A type system does not make programmers smarter or programs correct. It makes one class of error mechanically detectable before it propagates. That alone changed software reliability. Simplese aims for the same: not fewer hallucinations, but hallucination as an *identifiable event*.
+This is the same kind of invention as a **type system**. A type system does not make programmers smarter or programs correct. It makes one class of error mechanically detectable before it propagates. That alone changed software reliability. Fillmore aims for the same: not fewer hallucinations, but hallucination as an *identifiable event*.
 
 **JA** — これが技術的中核である。媒体が形式的であるため、以下を**構文レベルで**強制できる。
 
@@ -61,9 +67,9 @@ This is the same kind of invention as a **type system**. A type system does not 
 >
 > **いずれにも由来しないトークンの出現は、定義により幻覚であり、文字列照合によって検出できる。**
 
-自然言語ではこの制約は書き下せない。「文脈に由来する」の判定自体が意味理解を要求するからである。Simpleseでは実体が正規化された識別子として現れるため、由来判定が集合演算に還元される。
+自然言語ではこの制約は書き下せない。「文脈に由来する」の判定自体が意味理解を要求するからである。Fillmoreでは実体が正規化された識別子として現れるため、由来判定が集合演算に還元される。
 
-これは**型システム**と同じ種類の発明である。型システムはプログラマを賢くしないし、プログラムを正しくもしない。ある種類の誤りを、伝播する前に機械的に検出可能にするだけである。それだけでソフトウェアの信頼性は質的に変わった。Simpleseが目指すのも同じ——幻覚を減らすのではなく、**幻覚を識別可能な事象にする。**
+これは**型システム**と同じ種類の発明である。型システムはプログラマを賢くしないし、プログラムを正しくもしない。ある種類の誤りを、伝播する前に機械的に検出可能にするだけである。それだけでソフトウェアの信頼性は質的に変わった。Fillmoreが目指すのも同じ——幻覚を減らすのではなく、**幻覚を識別可能な事象にする。**
 
 ---
 
@@ -74,26 +80,26 @@ This is the same kind of invention as a **type system**. A type system does not 
                                  │
         ┌────────────────────────┴─────────────────────────┐
         │   Translation Boundary        翻訳境界            │  ← hallucination is localized here
-        │   NL ⇄ Simplese                                   │  ← inspect only this surface
+        │   NL ⇄ Fillmore                                   │  ← inspect only this surface
         └────────────────────────┬─────────────────────────┘
-                                 │  Simplese
+                                 │  Fillmore
         ┌────────────────────────┴─────────────────────────┐
         │   Logic Core                  論理コア            │  ← holds no knowledge
         │   · small transformer, logic only                 │  ← never saw natural language
         │   · minimal core axioms only                      │
         │   · emits only under the Grounding Constraint     │
         └────────────────────────┬─────────────────────────┘
-                                 │  function call (a Simplese query)
+                                 │  function call (a Fillmore query)
         ┌────────────────────────┴─────────────────────────┐
         │   Knowledge Layer             知識供給層          │
         │   · retrieval / DB / API / sensors / simulators   │
-        │   · returns results normalized into Simplese      │
+        │   · returns results normalized into Fillmore      │
         └──────────────────────────────────────────────────┘
 ```
 
-**EN** — Note what this does *not* claim. Hallucination is not eliminated; it is **localized**. It can still enter at the translation boundary. But where current architectures diffuse it through the entire reasoning process, here it is confined to a single, explicit, auditable interface — whose output is Simplese, and therefore checkable.
+**EN** — Note what this does *not* claim. Hallucination is not eliminated; it is **localized**. It can still enter at the translation boundary. But where current architectures diffuse it through the entire reasoning process, here it is confined to a single, explicit, auditable interface — whose output is Fillmore, and therefore checkable.
 
-**JA** — この設計は幻覚をゼロにしない。**局在化する。** 翻訳境界には依然として幻覚が入りうる。しかし現行アーキテクチャが推論の全過程に幻覚を拡散させるのに対し、ここではそれが単一の、明示された、監査可能なインターフェースに閉じ込められる。そしてその出力はSimpleseなので、検証器にかけられる。
+**JA** — この設計は幻覚をゼロにしない。**局在化する。** 翻訳境界には依然として幻覚が入りうる。しかし現行アーキテクチャが推論の全過程に幻覚を拡散させるのに対し、ここではそれが単一の、明示された、監査可能なインターフェースに閉じ込められる。そしてその出力はFillmoreなので、検証器にかけられる。
 
 ---
 
@@ -121,13 +127,13 @@ This is the same kind of invention as a **type system**. A type system does not 
 
 ### Redundancy dissolves the boundary problem / 冗長性による境界問題の解消
 
-**EN** — "Do humans die?" — is that logic or knowledge? CYC spent forty years failing to fix this boundary. **Simplese does not need to fix it.** The minimal core and the external knowledge base are permitted to **overlap**. If the model asks *just in case* whether humans die, the knowledge base should answer that they do.
+**EN** — "Do humans die?" — is that logic or knowledge? CYC spent forty years failing to fix this boundary. **Fillmore does not need to fix it.** The minimal core and the external knowledge base are permitted to **overlap**. If the model asks *just in case* whether humans die, the knowledge base should answer that they do.
 
 CYC collapsed because its hand-written core was the *only* source, so it had to be complete, and completeness was unreachable. Here the two are redundant: a gap in the core is caught by retrieval, a gap in retrieval is caught by the core. The only real failure is absence from both — **which is a coverage problem, not a definitional one.** Coverage can be measured and improved. Definitions could not.
 
 A side effect: **the model no longer needs calibration.** Knowing whether you know is a famously unsolved problem. Here it is unnecessary — when in doubt, just ask.
 
-**JA** — 「人は死ぬ」は論理か知識か。CYCは40年かけてこの境界を確定しようとし、失敗した。**Simpleseは確定する必要がない。** 最小核と外部知識ベースは**重複してよい。** モデルが念のため「人は死ぬか」と問い合わせたら、知識ベースは「人は死ぬ」と答えるべきである。
+**JA** — 「人は死ぬ」は論理か知識か。CYCは40年かけてこの境界を確定しようとし、失敗した。**Fillmoreは確定する必要がない。** 最小核と外部知識ベースは**重複してよい。** モデルが念のため「人は死ぬか」と問い合わせたら、知識ベースは「人は死ぬ」と答えるべきである。
 
 CYCが崩壊したのは、手書きの核が**唯一の**知識源であり、ゆえに完全でなければならず、完全性が達成不可能だったからである。ここでは両者が冗長化されている。核の抜けは検索が拾い、検索の抜けは核が持つ。真の欠落は「両方に無い」場合だけで、**これは定義の問題ではなく網羅性の問題である。** 網羅性は測定でき、改善できる。定義はできなかった。
 
@@ -153,7 +159,7 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 | 2 | **Detection** — hallucination detection under the grounding constraint reaches practical rates (≥99%) / 接地制約下で幻覚検出率が実用水準に達する | The model routinely evades the constraint by miscombining known tokens / 既知トークンの誤結合で制約を回避する場合 |
 | 3 | **Format matters** — holding meaning fixed, role-tagged flat form generalizes compositionally better than word-order form / 意味を固定したとき、役割タグ付きフラット形式は語順依存形式より高い組成的汎化を示す | No difference. Then format is irrelevant and only the generator matters — also an important result / 差が出ない場合。形式ではなく生成器がすべてという結論になり、これも重要な知見 |
 | 4 | **Invariance transfers** — a model trained on conservation-as-string-persistence generalizes to invariants never encoded that way / 文字列永続性として教えた保存則が、そう教えなかった不変量にも汎化する | It does not. Then the model learned copying, not invariance — and a central assumption falls / 汎化しない場合。モデルは不変性ではなくコピーを学習しており、中心的仮定が反証される |
-| 5 | **Conversation** — a human and a small model that has never seen natural language hold a multi-turn exchange entirely in Simplese / 自然言語を見たことのない小規模モデルと人間が、Simpleseのみで多ターンの対話を成立させる | — *(no precedent exists / 前例のない到達点)* |
+| 5 | **Conversation** — a human and a small model that has never seen natural language hold a multi-turn exchange entirely in Fillmore / 自然言語を見たことのない小規模モデルと人間が、Fillmoreのみで多ターンの対話を成立させる | — *(no precedent exists / 前例のない到達点)* |
 
 ---
 
@@ -161,11 +167,11 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 
 **EN** — This repository is bilingual, and that is not a courtesy. It is part of the argument.
 
-Simplese's **vocabulary is English**; its **grammar is Japanese**.
+Fillmore's **vocabulary is English**; its **grammar is Japanese**.
 
 Chapter 2 of the charter declares an escape from the tyranny of English SVO word order. Structurally, the escape route it takes leads to Japanese-type case marking. Six of the eight core slots map one-to-one onto real Japanese case particles:
 
-| Simplese | 日本語 | English |
+| Fillmore | 日本語 | English |
 |---|---|---|
 | `agt:` | **が** | word order (subject position) |
 | `tgt:` | **を** | word order (post-verbal) |
@@ -186,7 +192,7 @@ The Japanese text is the primary source. The English is the door.
 
 **JA** — 本リポジトリは英日併記だが、これは配慮ではなく**主張の一部**である。
 
-Simpleseは、**語彙は英語だが、文法は日本語である。**
+Fillmoreは、**語彙は英語だが、文法は日本語である。**
 
 憲章第2章は「英語のSVO語順の暴政からの脱出」を宣言している。その逃走先は、構造的に見れば日本語型の格標示である。8つのコアスロットのうち6つが、日本語の実在の格助詞に一対一で対応する（上表）。
 
@@ -199,6 +205,51 @@ Simpleseは、**語彙は英語だが、文法は日本語である。**
 すなわち本企画は、**英語語彙の世界的普遍性と、日本語構造の論理性を組み合わせる。** 英語語彙の形式言語を英語で語ると、どの直感が設計由来でどの直感が英語からの漏れ込みかを切り分けられない。日本語で書けば境界が強制的に明示化される——`agt:` を「主語だよね」で済ませられない。
 
 日本語テキストが正本である。英語は扉である。
+
+---
+
+## The Name / 名前について
+
+**EN** — The project is named for **Charles J. Fillmore** (1929–2014), and its first language specification for **Kiyose Gisaburō Norikura** (清瀬義三郎則府, 1931–2017). Neither name is decoration; each points at the half of the design its bearer discovered.
+
+**Fillmore — the case frame.** "The Case for Case" (1968) proposed deep cases as universal semantic roles. Frame semantics followed. He spent the last seventeen years of his life building **FrameNet**, a machine-readable inventory of frames and their elements, and died with it unfinished. FrameNet's limit was that it *annotated* English — the frames were a target representation predicted *from* natural language, because in his era there was no way to make them the medium itself. **This project inverts that: the frames are the primary medium, and natural language never enters the loop.** It attempts what Fillmore was reaching for with tools he did not have.
+
+The pun is not incidental. **To describe an event more precisely in this language is to fill more slots:**
+
+```
+Cut tgt:Bread                                  ← abstract
+Cut agt:John tgt:Bread tool:Knife tense:past   ← fill more
+```
+
+**Kiyose — the agglutinative morphology.** An Altaic linguist (Jurchen, Manchu, Old Korean; Indiana, then Hawaii), Kiyose proposed *derivational grammar* on a single thesis: **Japanese verbs do not conjugate.** They agglutinate — morphemes attach without fusing, and nothing about the stem changes. This language makes the same commitment by design: verbs never inflect, tense/aspect/modality become separable slots rather than stem mutations, and suffixes attach regularly. What Kiyose argued descriptively about Japanese, the Gisaburo specification implements.
+
+The two were near-contemporaries, an ocean apart, and to our knowledge never met. One worked on case, the other on agglutination — **the two halves of the same object.** This language is built on both.
+
+### Version naming / バージョン命名
+
+Chapter 11 of the charter expects the language to be extended and revised by successive generations. The project name is therefore permanent and the specification is codenamed per generation:
+
+> **Each version is named for a linguist whose thesis that version embodies.**
+
+`v1 = Gisaburo` — verbs do not conjugate. Candidates in the line: Tesnière (valency, actants), Hjelmslev (the category of case), Pāṇini (kāraka), Dowty (proto-roles), Talmy (force dynamics), Wierzbicka (semantic primes), Kamp (discourse representation — for whichever generation adds the dialogue layer).
+
+**JA** — 本企画は **Charles J. Fillmore**（1929–2014）に、そして最初の言語仕様は **清瀬義三郎則府**（1931–2017）に献名されている。どちらも装飾ではなく、それぞれが発見した設計の半分を名指している。
+
+**Fillmore ── 格フレーム。**「The Case for Case」(1968) は深層格を普遍的意味役割として提案した。フレーム意味論がそれに続いた。彼は生涯最後の17年を **FrameNet** ── フレームと格要素の機械可読な目録 ── の構築に費やし、未完のまま没した。FrameNet の限界は、それが英語への**注釈**だったことである。フレームは自然言語から予測される目標表現にすぎなかった。当時、それ自体を媒体にする方法がなかったからである。**本企画はそれを反転させる。フレームが一次媒体であり、自然言語はループに入らない。** Fillmore が手を伸ばしていたものを、彼が持たなかった道具で試みる。
+
+駄洒落は偶然ではない。**この言語で事象をより精密に記述することは、より多くのスロットを埋めること（fill more slots）である。**
+
+**清瀬 ── 膠着形態論。**アルタイ言語学者（女真語・満洲語・古代朝鮮語。インディアナ大学を経てハワイ大学）。清瀬は**「日本語の動詞は活用しない」**という一つの主張のうえに派生文法を提唱した。動詞は膠着する ── 形態素は融合せずに接合し、語幹は何も変化しない。本言語は同じ立場を設計として採る。動詞は決して屈折せず、時制・相・法は語幹の変異ではなく分離可能なスロットになり、接尾辞は規則的に接合する。**清瀬が日本語について記述的に論じたことを、Gisaburo 仕様は実装する。**
+
+二人はほぼ同時代人であり、大洋を隔てて、我々の知る限り会うことはなかった。一方は格を、他方は膠着を研究した ── **同じ対象の二つの半分である。** 本言語は、その両方の上に建っている。
+
+### バージョン命名
+
+憲章第11章は、言語が世代を重ねて拡張・改訂されることを前提としている。したがって企画名は恒久とし、仕様は世代ごとにコードネームを持つ。
+
+> **各バージョンは、その世代が体現する主張を論じた言語学者の名を冠する。**
+
+`v1 = Gisaburo` ── 動詞は活用しない。系列の候補：Tesnière（結合価・actant）、Hjelmslev（格の範疇）、Pāṇini（kāraka）、Dowty（原型役割）、Talmy（力動性）、Wierzbicka（意味素）、Kamp（談話表示 ── 対話層を追加する世代に）。
 
 ---
 
