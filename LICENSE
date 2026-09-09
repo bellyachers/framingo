@@ -1,0 +1,34 @@
+Simplese — documentation and language specification
+Copyright (c) 2026 vufey and contributors
+
+This work is licensed under the Creative Commons Attribution 4.0
+International License (CC BY 4.0).
+
+    https://creativecommons.org/licenses/by/4.0/
+
+You are free to share and adapt this material for any purpose, including
+commercially, provided you give appropriate credit, provide a link to the
+license, and indicate if changes were made.
+
+Implementing this specification in software does not constitute a
+derivative work of this document. Source code added to this repository
+will be licensed under Apache License 2.0; that license will be added
+alongside this file when code is introduced.
+
+---
+
+Simplese — 文書および言語仕様
+Copyright (c) 2026 長岡俊彦 および貢献者
+
+本著作物はクリエイティブ・コモンズ 表示 4.0 国際ライセンス（CC BY 4.0）
+のもとで提供される。
+
+    https://creativecommons.org/licenses/by/4.0/deed.ja
+
+適切なクレジットを表示し、ライセンスへのリンクを提供し、変更があれば
+その旨を示す限り、商用を含むあらゆる目的で共有・翻案してよい。
+
+本仕様をソフトウェアとして実装する行為は、本文書の二次的著作物の作成に
+あたらない。本リポジトリに追加されるソースコードは Apache License 2.0
+のもとで提供される。コードが導入された時点で、当該ライセンスを本ファイル
+と併せて追加する。
