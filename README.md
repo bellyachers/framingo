@@ -335,6 +335,10 @@ FrameNet の限界は、それが英語への**注釈**だったことである�
 
 ## Contributing / 貢献について
 
+Published as [`github.com/the-bellyachers`](https://github.com/the-bellyachers). Read plainly, the charter is one long complaint; the organization is named accordingly.
+
+[`github.com/the-bellyachers`](https://github.com/the-bellyachers) にて公開。憲章は素直に読めば全編が文句であり、組織名はそれに従っている。
+
 **EN** — What is passed between generations of this project is not model weights. It is the language specification, the verifier, the corpus generator, and the minimal core — all human-readable, machine-checkable, version-controlled artifacts.
 
 Contributions are therefore judged the same way regardless of whether a human or a machine wrote them: **does the diff pass the verifier?** Chapter 11 of the charter was written by Claude (Opus 5) and is marked as such. It is subject to the same standard.
