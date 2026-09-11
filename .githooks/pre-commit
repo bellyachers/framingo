@@ -1,0 +1,26 @@
+#!/bin/sh
+# Refuse any commit whose author email is not a GitHub noreply address.
+# This repository is public; a real address committed here is permanent.
+# 公開リポジトリのため、実アドレスでのコミットを禁止する。一度 push すれば取り消せない。
+
+email=$(git config user.email)
+
+case "$email" in
+    *@users.noreply.github.com) ;;
+    *)
+        echo "" >&2
+        echo "  COMMIT BLOCKED / コミットを中止しました" >&2
+        echo "" >&2
+        echo "  user.email = $email" >&2
+        echo "" >&2
+        echo "  This is a public repository. Commit emails are permanent and" >&2
+        echo "  publicly scrapable. Use your GitHub noreply address." >&2
+        echo "  公開リポジトリです。コミットのメールは永久に残り、収集されます。" >&2
+        echo "  GitHub の noreply アドレスを使ってください。" >&2
+        echo "" >&2
+        echo "    https://github.com/settings/emails" >&2
+        echo "    git config --local user.email '<ID>+<name>@users.noreply.github.com'" >&2
+        echo "" >&2
+        exit 1
+        ;;
+esac
