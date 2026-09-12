@@ -1,13 +1,14 @@
-# The Teniwoha Project
+# The Framingo Project
 
 ```
-The Teniwoha Project     てにをは計画          the undertaking
-  └─ Teniwoha            てにをは              the language (lineage)
+The Framingo Project     フレーミンゴ計画      the undertaking
+  └─ Framingo            フレーミンゴ          the language
        └─ Gisaburo       ギサブロー            v1 specification
 ```
 
 > **English is fine as vocabulary. It has no てにをは. This language supplies it.**
 > **英語は語彙としては申し分ない。だが「てにをは」がない。この言語がそれを埋める。**
+
 
 **A designed formal language for models that separate logic from knowledge — so that hallucination becomes *mechanically detectable*, not merely less frequent.**
 
@@ -26,7 +27,7 @@ The Teniwoha Project     てにをは計画          the undertaking
 2. **Undetectable hallucination.** A fabricated fact and a correct one are structurally identical at the surface — both fluent, both from the same stochastic process. Nothing outside the model can tell them apart.
 3. **Unauditable reasoning.** A natural-language chain of thought may be post-hoc confabulation. There is no guarantee it corresponds to the computation that produced the answer.
 
-Teniwoha dissolves the fusion:
+Framingo dissolves the fusion:
 
 > **The model learns logic only. It holds no factual knowledge.**
 > **Knowledge is retrieved at inference time via function calling and placed in context.**
@@ -38,7 +39,7 @@ Teniwoha dissolves the fusion:
 2. **幻覚の検出不能性。** 捏造された事実と正しい事実は、表層において構造的に同一である。どちらも流暢で、同じ確率過程から生成される。モデルの外側からは判別できない。
 3. **監査不能性。** 自然言語のChain-of-Thoughtは事後的な作話でありうる。実際の計算経路と一致している保証はない。
 
-Teniwohaはこの融合を解体する。
+Framingoはこの融合を解体する。
 
 > **モデルには論理だけを学習させる。事実知識は一切持たせない。**
 > **知識は推論時にFunction Callingで取得し、コンテクストに載せる。**
@@ -57,9 +58,9 @@ Teniwohaはこの融合を解体する。
 >
 > **A token traceable to none of these is, by definition, a hallucination — and is detectable by string matching.**
 
-In natural language this constraint cannot be written down, because deciding "derives from context" itself requires understanding. In Teniwoha, entities appear as normalized identifiers, so the check reduces to set operations.
+In natural language this constraint cannot be written down, because deciding "derives from context" itself requires understanding. In Framingo, entities appear as normalized identifiers, so the check reduces to set operations.
 
-This is the same kind of invention as a **type system**. A type system does not make programmers smarter or programs correct. It makes one class of error mechanically detectable before it propagates. That alone changed software reliability. Teniwoha aims for the same: not fewer hallucinations, but hallucination as an *identifiable event*.
+This is the same kind of invention as a **type system**. A type system does not make programmers smarter or programs correct. It makes one class of error mechanically detectable before it propagates. That alone changed software reliability. Framingo aims for the same: not fewer hallucinations, but hallucination as an *identifiable event*.
 
 **JA** — これが技術的中核である。媒体が形式的であるため、以下を**構文レベルで**強制できる。
 
@@ -70,9 +71,9 @@ This is the same kind of invention as a **type system**. A type system does not 
 >
 > **いずれにも由来しないトークンの出現は、定義により幻覚であり、文字列照合によって検出できる。**
 
-自然言語ではこの制約は書き下せない。「文脈に由来する」の判定自体が意味理解を要求するからである。Teniwohaでは実体が正規化された識別子として現れるため、由来判定が集合演算に還元される。
+自然言語ではこの制約は書き下せない。「文脈に由来する」の判定自体が意味理解を要求するからである。Framingoでは実体が正規化された識別子として現れるため、由来判定が集合演算に還元される。
 
-これは**型システム**と同じ種類の発明である。型システムはプログラマを賢くしないし、プログラムを正しくもしない。ある種類の誤りを、伝播する前に機械的に検出可能にするだけである。それだけでソフトウェアの信頼性は質的に変わった。Teniwohaが目指すのも同じ——幻覚を減らすのではなく、**幻覚を識別可能な事象にする。**
+これは**型システム**と同じ種類の発明である。型システムはプログラマを賢くしないし、プログラムを正しくもしない。ある種類の誤りを、伝播する前に機械的に検出可能にするだけである。それだけでソフトウェアの信頼性は質的に変わった。Framingoが目指すのも同じ——幻覚を減らすのではなく、**幻覚を識別可能な事象にする。**
 
 ---
 
@@ -83,26 +84,26 @@ This is the same kind of invention as a **type system**. A type system does not 
                                  │
         ┌────────────────────────┴─────────────────────────┐
         │   Translation Boundary        翻訳境界            │  ← hallucination is localized here
-        │   NL ⇄ Teniwoha                                   │  ← inspect only this surface
+        │   NL ⇄ Framingo                                   │  ← inspect only this surface
         └────────────────────────┬─────────────────────────┘
-                                 │  Teniwoha
+                                 │  Framingo
         ┌────────────────────────┴─────────────────────────┐
         │   Logic Core                  論理コア            │  ← holds no knowledge
         │   · small transformer, logic only                 │  ← never saw natural language
         │   · minimal core axioms only                      │
         │   · emits only under the Grounding Constraint     │
         └────────────────────────┬─────────────────────────┘
-                                 │  function call (a Teniwoha query)
+                                 │  function call (a Framingo query)
         ┌────────────────────────┴─────────────────────────┐
         │   Knowledge Layer             知識供給層          │
         │   · retrieval / DB / API / sensors / simulators   │
-        │   · returns results normalized into Teniwoha      │
+        │   · returns results normalized into Framingo      │
         └──────────────────────────────────────────────────┘
 ```
 
-**EN** — Note what this does *not* claim. Hallucination is not eliminated; it is **localized**. It can still enter at the translation boundary. But where current architectures diffuse it through the entire reasoning process, here it is confined to a single, explicit, auditable interface — whose output is Teniwoha, and therefore checkable.
+**EN** — Note what this does *not* claim. Hallucination is not eliminated; it is **localized**. It can still enter at the translation boundary. But where current architectures diffuse it through the entire reasoning process, here it is confined to a single, explicit, auditable interface — whose output is Framingo, and therefore checkable.
 
-**JA** — この設計は幻覚をゼロにしない。**局在化する。** 翻訳境界には依然として幻覚が入りうる。しかし現行アーキテクチャが推論の全過程に幻覚を拡散させるのに対し、ここではそれが単一の、明示された、監査可能なインターフェースに閉じ込められる。そしてその出力はTeniwohaなので、検証器にかけられる。
+**JA** — この設計は幻覚をゼロにしない。**局在化する。** 翻訳境界には依然として幻覚が入りうる。しかし現行アーキテクチャが推論の全過程に幻覚を拡散させるのに対し、ここではそれが単一の、明示された、監査可能なインターフェースに閉じ込められる。そしてその出力はFramingoなので、検証器にかけられる。
 
 ---
 
@@ -130,13 +131,13 @@ This is the same kind of invention as a **type system**. A type system does not 
 
 ### Redundancy dissolves the boundary problem / 冗長性による境界問題の解消
 
-**EN** — "Do humans die?" — is that logic or knowledge? CYC spent forty years failing to fix this boundary. **Teniwoha does not need to fix it.** The minimal core and the external knowledge base are permitted to **overlap**. If the model asks *just in case* whether humans die, the knowledge base should answer that they do.
+**EN** — "Do humans die?" — is that logic or knowledge? CYC spent forty years failing to fix this boundary. **Framingo does not need to fix it.** The minimal core and the external knowledge base are permitted to **overlap**. If the model asks *just in case* whether humans die, the knowledge base should answer that they do.
 
 CYC collapsed because its hand-written core was the *only* source, so it had to be complete, and completeness was unreachable. Here the two are redundant: a gap in the core is caught by retrieval, a gap in retrieval is caught by the core. The only real failure is absence from both — **which is a coverage problem, not a definitional one.** Coverage can be measured and improved. Definitions could not.
 
 A side effect: **the model no longer needs calibration.** Knowing whether you know is a famously unsolved problem. Here it is unnecessary — when in doubt, just ask.
 
-**JA** — 「人は死ぬ」は論理か知識か。CYCは40年かけてこの境界を確定しようとし、失敗した。**Teniwohaは確定する必要がない。** 最小核と外部知識ベースは**重複してよい。** モデルが念のため「人は死ぬか」と問い合わせたら、知識ベースは「人は死ぬ」と答えるべきである。
+**JA** — 「人は死ぬ」は論理か知識か。CYCは40年かけてこの境界を確定しようとし、失敗した。**Framingoは確定する必要がない。** 最小核と外部知識ベースは**重複してよい。** モデルが念のため「人は死ぬか」と問い合わせたら、知識ベースは「人は死ぬ」と答えるべきである。
 
 CYCが崩壊したのは、手書きの核が**唯一の**知識源であり、ゆえに完全でなければならず、完全性が達成不可能だったからである。ここでは両者が冗長化されている。核の抜けは検索が拾い、検索の抜けは核が持つ。真の欠落は「両方に無い」場合だけで、**これは定義の問題ではなく網羅性の問題である。** 網羅性は測定でき、改善できる。定義はできなかった。
 
@@ -162,7 +163,7 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 | 2 | **Detection** — hallucination detection under the grounding constraint reaches practical rates (≥99%) / 接地制約下で幻覚検出率が実用水準に達する | The model routinely evades the constraint by miscombining known tokens / 既知トークンの誤結合で制約を回避する場合 |
 | 3 | **Format matters** — holding meaning fixed, role-tagged flat form generalizes compositionally better than word-order form / 意味を固定したとき、役割タグ付きフラット形式は語順依存形式より高い組成的汎化を示す | No difference. Then format is irrelevant and only the generator matters — also an important result / 差が出ない場合。形式ではなく生成器がすべてという結論になり、これも重要な知見 |
 | 4 | **Invariance transfers** — a model trained on conservation-as-string-persistence generalizes to invariants never encoded that way / 文字列永続性として教えた保存則が、そう教えなかった不変量にも汎化する | It does not. Then the model learned copying, not invariance — and a central assumption falls / 汎化しない場合。モデルは不変性ではなくコピーを学習しており、中心的仮定が反証される |
-| 5 | **Conversation** — a human and a small model that has never seen natural language hold a multi-turn exchange entirely in Teniwoha / 自然言語を見たことのない小規模モデルと人間が、Teniwohaのみで多ターンの対話を成立させる | — *(no precedent exists / 前例のない到達点)* |
+| 5 | **Conversation** — a human and a small model that has never seen natural language hold a multi-turn exchange entirely in Framingo / 自然言語を見たことのない小規模モデルと人間が、Framingoのみで多ターンの対話を成立させる | — *(no precedent exists / 前例のない到達点)* |
 
 ---
 
@@ -170,7 +171,7 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 
 **EN** — This repository is bilingual, and that is not a courtesy. It is part of the argument.
 
-Teniwoha's **vocabulary is English**; its **grammar is Japanese**. The case-marking argument is set out under [The Name](#the-name--名前について) above; what follows is why *this repository* is bilingual.
+Framingo's **vocabulary is English**; its **grammar is Japanese**. The case-marking argument is set out under [The Name](#the-name--名前について) above; what follows is why *this repository* is bilingual.
 
 The three properties the charter names as central are ordinary daily operations in Japanese:
 
@@ -184,7 +185,7 @@ The Japanese text is the primary source. The English is the door.
 
 **JA** — 本リポジトリは英日併記だが、これは配慮ではなく**主張の一部**である。
 
-Teniwohaは、**語彙は英語だが、文法は日本語である。** 格標示についての議論は上の[名前について](#the-name--名前について)に置いた。ここで述べるのは、**このリポジトリが**英日併記である理由である。
+Framingoは、**語彙は英語だが、文法は日本語である。** 格標示についての議論は上の[名前について](#the-name--名前について)に置いた。ここで述べるのは、**このリポジトリが**英日併記である理由である。
 
 憲章が中核的特徴として掲げる三つの性質は、日本語では日常の運用にすぎない。
 
@@ -199,6 +200,20 @@ Teniwohaは、**語彙は英語だが、文法は日本語である。** 格標�
 ---
 
 ## The Name / 名前について
+
+**EN** — **Framingo** is *framing* — Charles Fillmore's frame semantics, the theoretical basis of the case system in chapter 2 — suffixed with the Japanese **語** (*-go*), the ending by which Japanese names a language: 日本語, 英語, フランス語. **Framing-go: the framing language.** The word is therefore built the way this language is: an English root, a Japanese grammatical ending.
+
+The name is deliberately vague about scope, and that is the point. A name that states a thesis precisely must be abandoned when the thesis grows — BackRub became Google, Twitter became X, Facebook became Meta, all because the name had fixed a boundary the thing outgrew. Java, Python, Rust and Amazon never had that problem, because they never claimed anything. **This project does not yet know what it will become. The name reserves the room; the prose below carries the precision, because prose can be revised and names cannot.**
+
+### The bird
+
+**Framingo** is one letter from *flamingo*, and the mascot is adopted rather than avoided — for a reason that is not decorative.
+
+> **A flamingo is not pink. It is the colour of what it has eaten.** The pigment is carotenoid, taken entirely from algae and crustaceans in its diet; deprive it of that intake and the bird turns pale.
+
+Its defining property is not intrinsic. It is supplied from outside — which is precisely the architecture described above: a logic core that holds no knowledge, coloured entirely by what is placed in its context.
+
+---
 
 **EN** — **English is fine as vocabulary. It has no てにをは. This language supplies it.**
 
@@ -229,7 +244,23 @@ The Japanese idiom 「てにをはが合わない」 — *the teniwoha do not ma
 
 ### Spelling
 
-Romanized **Teniwoha** throughout: the form a Japanese writer's hands produce (the IME takes `wo`), and phonotactically even — CV.CV.CV.CV, where *tenioha* leaves a bare vowel in hiatus. Also written *tenioha*; the kana is てにをは.
+The concept is romanized **teniwoha** throughout: the form a Japanese writer's hands produce (the IME takes `wo`), and phonotactically even — CV.CV.CV.CV, where *tenioha* leaves a bare vowel in hiatus. Also written *tenioha*; the kana is てにをは.
+
+---
+
+**JA** — **Framingo（フレーミンゴ）**は、*framing* ── Charles Fillmore のフレーム意味論、第2章の格体系の理論的基盤 ── に、日本語の **語** を接合したものである。日本語が言語を名付ける接尾辞、すなわち日本語・英語・フランス語の「語」である。**Framing-語、フレーミング語。** つまりこの語自体が、この言語と同じ作りをしている ── **英語の語根に、日本語の文法的語尾。**
+
+名前は射程について意図的に曖昧であり、それが狙いである。主張を正確に述べた名前は、主張が育ったときに捨てねばならない ── BackRub は Google に、Twitter は X に、Facebook は Meta に改名した。いずれも名前が境界を固定し、実体がそれを越えたからである。Java も Python も Rust も Amazon もその問題を持たなかった。**何も主張していなかったからである。**
+
+**本企画は、自分が何になるかをまだ知らない。名前は余地を残し、精度は以下の散文が担う。散文は改訂できるが、名前はできない。**
+
+### 鳥について
+
+**Framingo** は *flamingo* と一文字違いであり、マスコットは避けるのではなく採用する。装飾的でない理由がある。
+
+> **フラミンゴはピンク色ではない。食べたものの色である。** 色素はカロテノイドで、餌の藻類や甲殻類から全量を摂取している。それを断てば、鳥は白くなる。
+
+**この鳥の最も特徴的な性質は、内在的なものではない。外部から供給されている。** それは上で述べたアーキテクチャそのものである ── 知識を持たない論理コアが、文脈に置かれたものによってのみ色付く。
 
 ---
 
@@ -262,7 +293,7 @@ Romanized **Teniwoha** throughout: the form a Japanese writer's hands produce (t
 
 ### 綴り
 
-本文では **Teniwoha** で統一する。日本語話者の手が自然に打つ形であり（IME入力が `wo`）、音韻的にも CV.CV.CV.CV で均質である（*tenioha* は裸母音が一つ挟まる）。*tenioha* とも綴られる。仮名は「てにをは」。
+概念の表記は **teniwoha** で統一する。日本語話者の手が自然に打つ形であり（IME入力が `wo`）、音韻的にも CV.CV.CV.CV で均質である（*tenioha* は裸母音が一つ挟まる）。*tenioha* とも綴られる。仮名は「てにをは」。
 
 ---
 
@@ -335,9 +366,9 @@ FrameNet の限界は、それが英語への**注釈**だったことである�
 
 ## Contributing / 貢献について
 
-Published as [`github.com/the-bellyachers`](https://github.com/the-bellyachers). Read plainly, the charter is one long complaint; the organization is named accordingly.
+Published as [`github.com/bellyachers`](https://github.com/bellyachers). Read plainly, the charter is one long complaint; the organization is named accordingly.
 
-[`github.com/the-bellyachers`](https://github.com/the-bellyachers) にて公開。憲章は素直に読めば全編が文句であり、組織名はそれに従っている。
+[`github.com/bellyachers`](https://github.com/bellyachers) にて公開。憲章は素直に読めば全編が文句であり、組織名はそれに従っている。
 
 **EN** — What is passed between generations of this project is not model weights. It is the language specification, the verifier, the corpus generator, and the minimal core — all human-readable, machine-checkable, version-controlled artifacts.
 

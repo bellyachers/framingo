@@ -1,7 +1,7 @@
 # Version Codenames / バージョン・コードネーム
 
-*The Teniwoha Project — specification naming roster*
-*てにをは計画 — 仕様コードネーム名簿*
+*The Framingo Project — specification naming roster*
+*フレーミンゴ計画 — 仕様コードネーム名簿*
 
 ---
 
@@ -15,7 +15,7 @@ Three conventions:
 
 1. **The name is assigned after the fact, not before.** A version is codenamed once its content is settled, so the name records what that generation actually did. Choosing the name first would make the scheme decorative.
 2. **One name is never reused.** The line is long enough.
-3. **The project name is not available as a version name.** `Teniwoha` belongs to the undertaking.
+3. **The project name is not available as a version name.** `Framingo` belongs to the undertaking.
 
 **JA** — 憲章第11章は、言語が世代を重ねて拡張・改訂されることを前提とする。したがって企画名は恒久とし、各仕様がコードネームを持つ。
 
@@ -25,7 +25,7 @@ Three conventions:
 
 1. **名前は事前ではなく事後に割り当てる。** 内容が確定してから命名する。そうすることで、名前がその世代の実際の成果を記録する。先に名前を決めると、体系が装飾になる。
 2. **同じ名前は二度使わない。** 系列は十分に長い。
-3. **企画名はバージョン名に使えない。** `Teniwoha` は企画に属する。
+3. **企画名はバージョン名に使えない。** `Framingo` は企画に属する。
 
 ---
 
@@ -47,6 +47,7 @@ Organized by **what a version would have to do to earn the name.**
 | Name | Who | Would name a version that… / こういう世代に |
 |---|---|---|
 | **Mikami** | 三上章 Mikami Akira (1903–1971)。『象は鼻が長い』(1960)、**主語廃止論** | Formalizes the removal of the subject as a privileged slot; establishes topic (題目) vs. complements (補語) as the real division / **主語という特権スロットの廃止を形式化する世代。**憲章2.1の主張そのもの |
+| **Teniwoha** | てにをは。助詞＝格標示そのものを指す古典的呼称。語源はヲコト点 | Completes the case-marking system — the generation that finishes what the name describes: supplying English with the particles it lacks / **格標示体系を完成させる世代。**英語に欠けている助詞を供給しきった世代が得る |
 | **Fillmore** | Charles J. Fillmore (1929–2014)。「The Case for Case」(1968)、フレーム意味論、**FrameNet**（未完） | Completes the frame inventory — the machine-readable catalogue of frames and their elements he did not finish / **FrameNet を完成させる世代。**彼が未完のまま遺した、フレームと格要素の機械可読な目録 |
 | **Tesnière** | Lucien Tesnière (1893–1954)。結合価・actant、依存文法 | Introduces **valency frames** — which slots each predicate requires, permits, or forbids / 述語ごとの結合価（必須・任意・禁止スロット）を導入する世代 |
 | **Hjelmslev** | Louis Hjelmslev (1899–1965)。『格の範疇』(1935) | Systematizes the case inventory itself on a principled basis / 格の目録そのものを原理的に再編する世代 |
