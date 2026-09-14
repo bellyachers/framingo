@@ -103,6 +103,59 @@ Every inference step is written in a machine-readable formal language, so it can
 ---
 # Chapter 2: Why It Must Be a Formal Language / 第2章：なぜ形式言語でなければならないか
 
+**EN** — **English is fine as vocabulary. It has no てにをは.**
+
+English is not without role marking: it has prepositions. But prepositions mark only the peripheral arguments.
+
+| Role / 役割 | Japanese / 日本語 | English / 英語 |
+|---|---|---|
+| `tool:` | **で** | *with* (polysemous / 多義) |
+| `src:` | **から** | *from* (polysemous / 多義) |
+| `dst:` | **へ / に** | *to / into / onto* (split / 分裂) |
+| `loc:` | **で / に** | *in / on / at* (split / 分裂) |
+| **`agt:`** | **が** | **Unmarked. Position only / 標示なし。位置のみ** |
+| **`tgt:`** | **を** | **Unmarked. Position only / 標示なし。位置のみ** |
+
+**The two most important arguments — who, and to what — carry no marker at all.** Old English marked case by inflection; as the inflections wore away, the means of marking core arguments went with them, and word order took over the load.
+
+A language whose word order carries the roles cannot spend its word order on viewpoint. To make "the bread" the subject, English must move the noun, recast the verb into the passive, and demote the agent into a *by*-phrase. Japanese, whose particles carry the roles, can say 「パンをジョンが切った」: the order changes, the verb does not. Japanese has a passive too; the difference is that in English, **because word order is occupied by the roles, shifting viewpoint means rebuilding the sentence.** The old draft called this the "viewpoint-dependent syntactic twist". The twist is no stylistic accident. It is what a missing marker costs.
+
+This bears directly on the problem of this chapter.
+
+```
+John cut the bread with a knife.
+The bread was cut by John with a knife.
+```
+
+One relation, two different strings. And since the roles can be read only from position, judging "which proposition in context does this relation derive from" first requires parsing the sentence to recover who did what — that is, it requires understanding. With the roles marked:
+
+```
+Cut agt:John tgt:Bread tool:Knife
+Cut tgt:Bread tool:Knife agt:John
+```
+
+Both are the same set, {`Cut`, `agt:John`, `tgt:Bread`, `tool:Knife`}; the order does not touch meaning. A relation becomes a set of role–identifier pairs, and judging its provenance reduces to set inclusion (section 2.2).
+
+The design follows in one line: **the vocabulary was never the problem. Keep it. Replace the role marking.**
+
+Supplying the marking, however, is not itself the aim.
+
+**JA** — **英語は語彙としては申し分ない。だが「てにをは」がない。**
+
+英語に役割標示がないわけではない。前置詞がある。しかし前置詞は周辺項しか標示しない。（上表参照）
+
+**最も重要な二つの項——誰が、何を——に、印が一切ない。** 古英語は屈折によって格を示したが、屈折が摩耗したとき、中核項を標示する手段もろとも失われ、その負荷を語順が引き受けた。
+
+語順が役割を担っている言語では、語順を視点のために使えない。「パン」を主語に据えるには、英語は名詞を移し、動詞を受動形に組み替え、動作主を *by* 句へ降格させねばならない。助詞が役割を担う日本語は、「パンをジョンが切った」と言える。語順は変わるが、動詞は変わらない。受動態は日本語にもある。違いは、英語では**語順が役割に占有されているため、視点を動かすことが文を組み替えることを意味する**点にある。旧文書はこれを「視点に依存した統語的ねじれ」と呼んだ。このねじれは文体上の偶然ではない。印の欠落の代償である。
+
+これは本章の問題に直結する。（上例参照）
+
+同一の関係が、二つの異なる文字列になる。しかも役割は位置からしか読めないため、「この関係は文脈のどの命題に由来するか」を判定するには、まず文を構文解析して誰が何をしたかを復元しなければならない。すなわち理解が要る。役割が標示されていれば、二つは同じ集合 {`Cut`, `agt:John`, `tgt:Bread`, `tool:Knife`} であり、並べ方は意味に触れない。関係は役割と識別子の組の集合になり、由来判定は集合の包含に還元される（2.2節）。
+
+設計は一行で従う。**問題は語彙ではなかった。語彙は保つ。役割標示だけを差し替える。**
+
+ただし、標示を補うこと自体が目的なのではない。
+
 ## 2.1 The Aim Is Not "Eliminating Ambiguity" / 目的は「曖昧性の排除」ではない
 
 **EN** — To give "because it has no ambiguity" as the reason for adopting a formal language is to mistake the aim. Eliminating ambiguity is a **means**, not the end.

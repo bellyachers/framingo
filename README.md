@@ -234,7 +234,7 @@ English is not without role marking — it has prepositions. But prepositions ma
 
 **The two most important arguments carry no marker at all.** Old English inflected for nominative, accusative, genitive and dative; modern English kept case only in the pronouns (*he/him*) and the genitive clitic. When the inflections went, the means of marking core arguments went with them — and word order had to take over the load.
 
-**This is why English has a passive voice.** In Japanese you change one particle — パンを切った / パンが切られた — and nothing else need move. In English you must relocate the noun, restructure the verb, and demote the agent into a *by*-phrase. **The passive is the detour a language needs when it has no を.** The charter calls this the "viewpoint-dependent syntactic twist" that forces a model to spend its attention on surface parsing. The twist is not a stylistic accident; it is the mechanical consequence of a missing marker.
+**This is why English must reach for the passive.** A language whose word order carries the roles cannot spend its word order on viewpoint. To make "the bread" the subject, English must relocate the noun, recast the verb, and demote the agent into a *by*-phrase. Japanese, whose particles carry the roles, can say 「パンをジョンが切った」: the order changes, the verb does not. Japanese has a passive too; the difference is that in English, **because word order is occupied by the roles, shifting viewpoint means rebuilding the sentence.** The charter calls this the "viewpoint-dependent syntactic twist" that forces a model to spend its attention on surface parsing. The twist is not a stylistic accident; it is what a missing marker costs.
 
 The design follows in one line: **the vocabulary was never the problem. Keep it. Replace the role marking.**
 
@@ -283,7 +283,7 @@ The concept is romanized **teniwoha** throughout: the form a Japanese writer's h
 
 **最も重要な二つの項に、印が一切ない。** 古英語は主格・対格・属格・与格に屈折したが、現代英語が保持した格は代名詞（*he/him*）と属格の `'s` だけである。屈折が失われたとき、**中核項を標示する手段もろとも失われ**、その負荷を語順が引き受けることになった。
 
-**だから英語には受動態がある。** 日本語は助詞を一つ替えればよい——「パンを切った」「パンが切られた」——他は何も動かす必要がない。英語は名詞を移動させ、動詞を組み替え、動作主を *by* 句へ降格させねばならない。**受動態とは、「を」を持たない言語が必要とする迂回路である。** 憲章はこれを「視点に依存した統語的ねじれ」と呼び、モデルに表層解析の負荷を強いる元凶とした。**このねじれは文体上の偶然ではなく、印の欠落がもたらす力学的な帰結である。**
+**だから英語は受動態に頼らざるをえない。** 語順が役割を担っている言語では、語順を視点のために使えない。「パン」を主語に据えるには、英語は名詞を移し、動詞を組み替え、動作主を *by* 句へ降格させねばならない。助詞が役割を担う日本語は、「パンをジョンが切った」と言える。語順は変わるが、動詞は変わらない。受動態は日本語にもある。違いは、英語では**語順が役割に占有されているため、視点を動かすことが文を組み替えることを意味する**点にある。憲章はこれを「視点に依存した統語的ねじれ」と呼び、モデルに表層解析の負荷を強いる元凶とした。**このねじれは文体上の偶然ではない。印の欠落の代償である。**
 
 設計は一行で従う。**問題は語彙ではなかった。語彙は保つ。役割標示だけを差し替える。**
 
