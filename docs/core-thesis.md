@@ -1060,7 +1060,9 @@ As a result:
 
 # Appendix B: Handling of the Old overview.md / 付録B：旧 overview.md の扱い
 
-**EN** — The following parts of the old draft remain valid.
+**EN** — Chapters 2–4 below now live in `language-spec.md`, with their original numbering; chapters 1 and 5 remain in `overview.md`.
+
+The following parts of the old draft remain valid.
 
 - **Chapter 2 (syntactic architecture and case system)** — Retained as means, subject to the position set out in chapter 7.
 - **Chapter 3 (concept composition, morphology)** — Likewise. Invariance as string persistence (section 7.1) in particular has independent value as something to test.
@@ -1071,7 +1073,9 @@ The following parts must be discarded or wholly revised.
 - **Chapter 1 (background and design philosophy)** — Its claim does not capture the central thesis. Chapters 1–2 of this document replace it.
 - **Chapter 5 (implementation protocol)** — It presupposes "acquiring a world model from a physics corpus", a different aim. To be redesigned on the basis of the propositions in chapter 8.
 
-**JA** — 旧文書の以下の部分は、なお有効である。
+**JA** — 以下の第2〜4章は、原文の章番号のまま `language-spec.md` に移した。第1章と第5章は `overview.md` に残る。
+
+旧文書の以下の部分は、なお有効である。
 
 - **第2章（構文アーキテクチャと格システム）** —— 手段として維持。ただし第7章の位置づけに従う。
 - **第3章（概念合成・形態論）** —— 同上。特に不変性の文字列化（7.1節）は独立した検証価値を持つ。
