@@ -30,7 +30,7 @@ design intuitions from English leakage.
 |---|---|
 | `docs/core-thesis.md` | **Current charter.** Ch.1–11 plus appendices |
 | `docs/version-names.md` | Version codename roster and the rule for assigning names |
-| `docs/language-spec.md` | Language specification, Gisaburo v1. Ch.2–4 of the original draft, moved unchanged and numbered as before; Japanese only so far |
+| `docs/language-spec.md` | Language specification, Gisaburo v1. Ch.2–4 of the original draft, moved unchanged and numbered as before |
 | `docs/overview.md` | Original draft, kept for the record. Only ch.1 and ch.5 remain, both superseded by `core-thesis.md` |
 
 Chapter 7 of the charter demotes the language specification to *means, not

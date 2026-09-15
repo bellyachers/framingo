@@ -349,7 +349,7 @@ FrameNet の限界は、それが英語への**注釈**だったことである�
 |---|---|
 | [`docs/core-thesis.md`](docs/core-thesis.md) | **Design charter (current).** The central claim, architecture, verifier, recursive loop, falsifiable propositions. / **設計憲章（現行）。** 中心命題、アーキテクチャ、検証器、再帰ループ、反証可能な命題 |
 | [`docs/version-names.md`](docs/version-names.md) | **Version codename roster.** Linguists whose theses future specifications could embody, and the rule for assigning them. / **バージョン・コードネーム名簿。** 各世代が体現しうる主張と、その割り当て規則 |
-| [`docs/language-spec.md`](docs/language-spec.md) | **Language specification, Gisaburo v1.** Case frames, concept composition, causal connectives — valid as *means* (charter ch.7). Japanese only for now. / **言語仕様 Gisaburo v1。** 格フレーム、概念合成、因果結合子。手段として有効（憲章第7章）。現時点では日本語のみ |
+| [`docs/language-spec.md`](docs/language-spec.md) | **Language specification, Gisaburo v1.** Case frames, concept composition, causal connectives — valid as *means* (charter ch.7). / **言語仕様 Gisaburo v1。** 格フレーム、概念合成、因果結合子。手段として有効（憲章第7章） |
 | [`docs/overview.md`](docs/overview.md) | Original draft, kept for the record. Ch. 1 and 5 remain, both superseded by `core-thesis.md`. / 初期草稿（記録として保存）。残る第1・5章は `core-thesis.md` が置き換える |
 
 ---
