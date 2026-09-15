@@ -228,7 +228,7 @@ Framingoが目指すのも同じである。モデルを賢くするのではな
 - **They were not designed as a training medium.** They were designed for humans to speak, or to feed symbolic reasoners, and **were not optimized as a training distribution for gradient descent.**
 - **They are token-inefficient.** The quantifiers and bound variables of first-order logic are costly structures for a Transformer.
 
-Framingo's language specification (the former chapters 2–4) matters because it is designed to satisfy all three conditions at once. The details of the specification are negotiable, but **the three conditions — "learnable in five minutes", "efficient to train on", "grounding judged mechanically" — are non-negotiable constraints.**
+Framingo's language specification (the former chapters 2–4, now `language-spec.md`) matters because it is designed to satisfy all three conditions at once. The details of the specification are negotiable, but **the three conditions — "learnable in five minutes", "efficient to train on", "grounding judged mechanically" — are non-negotiable constraints.**
 
 **JA** — Lojban、一階述語論理、PDDL、AMR。既存の形式言語は多数ある。これらを使わない理由は明確である。
 
@@ -236,7 +236,7 @@ Framingo's language specification (the former chapters 2–4) matters because it
 - **学習媒体として設計されていない。** それらは人間が話すため、あるいは記号的推論器に食わせるために設計されており、**勾配降下法の訓練分布として最適化されていない。**
 - **トークン効率が悪い。** 一階述語論理の量化子と束縛変数は、Transformerにとって高コストな構造である。
 
-Framingoの言語仕様（旧第2〜4章）が意味を持つのは、この三条件を同時に満たす設計だからである。仕様の細部は交渉可能だが、**「5分で習得可能」「学習効率が高い」「接地判定が機械的」の三条件は交渉不可能な制約である。**
+Framingoの言語仕様（旧第2〜4章、現 `language-spec.md`）が意味を持つのは、この三条件を同時に満たす設計だからである。仕様の細部は交渉可能だが、**「5分で習得可能」「学習効率が高い」「接地判定が機械的」の三条件は交渉不可能な制約である。**
 
 ---
 
@@ -578,7 +578,7 @@ It has not been done not because it is difficult, but because it did not pay. Th
 
 ## 6.4 What Is Missing: The Dialogue Layer / 欠落：対話層
 
-**EN** — The current language specification (the former chapters 2–4) **has no dialogue layer at all.**
+**EN** — The current language specification (the former chapters 2–4, now `language-spec.md`) **has no dialogue layer at all.**
 
 - No distinction between speaker and hearer
 - No distinction of speech acts (there is `QUERY:`, but no assertion, request, confirmation, denial or correction)
@@ -588,7 +588,7 @@ It has not been done not because it is difficult, but because it did not pay. Th
 
 If "holding a conversation with humans" is set as a destination, this must be filled in. Its priority, however, is lower than the boundary problem of chapter 4.
 
-**JA** — 現行の言語仕様（旧第2〜4章）には、**対話層が一切存在しない。**
+**JA** — 現行の言語仕様（旧第2〜4章、現 `language-spec.md`）には、**対話層が一切存在しない。**
 
 - 話者・聴者の区別がない
 - 発話行為の区別がない（`QUERY:` はあるが、断定・要求・確認・否認・訂正がない）

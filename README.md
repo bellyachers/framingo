@@ -173,10 +173,10 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 
 Framingo's **vocabulary is English**; its **grammar is Japanese**. The case-marking argument is set out under [The Name](#the-name--名前について) above; what follows is why *this repository* is bilingual.
 
-The three properties the charter names as central are ordinary daily operations in Japanese:
+The three properties the language specification names as central are ordinary daily operations in Japanese:
 
 - **Order invariance** — Japanese permits scrambling. 「ジョンがナイフでパンを切った」「パンをジョンがナイフで切った」 are both grammatical and identical in meaning. English cannot do this.
-- **Argument dropping** — 「パンを切った」 is complete and natural. The charter's "gradient of abstraction" needs no explanation to a Japanese speaker; an English speaker needs the passive voice to approximate it.
+- **Argument dropping** — 「パンを切った」 is complete and natural. The specification's "gradient of abstraction" needs no explanation to a Japanese speaker; an English speaker needs the passive voice to approximate it.
 - **Separable case marking** — Japanese case particles attach to nouns without fusing, unlike Latin or Russian case endings. `:` is functionally a 格助詞.
 
 So the project combines **the global reach of English vocabulary with the logical regularity of Japanese structure.** Describing an English-lexified formal language *in English* makes it impossible to tell which intuitions come from the design and which leak in from English. Writing in Japanese forces that boundary to be explicit — you cannot explain `agt:` by saying "well, it's the subject."
@@ -187,10 +187,10 @@ The Japanese text is the primary source. The English is the door.
 
 Framingoは、**語彙は英語だが、文法は日本語である。** 格標示についての議論は上の[名前について](#the-name--名前について)に置いた。ここで述べるのは、**このリポジトリが**英日併記である理由である。
 
-憲章が中核的特徴として掲げる三つの性質は、日本語では日常の運用にすぎない。
+言語仕様が中核的特徴として掲げる三つの性質は、日本語では日常の運用にすぎない。
 
 - **順序不変性** — 日本語はスクランブリングを許す。「ジョンがナイフでパンを切った」と「パンをジョンがナイフで切った」は両方文法的で同義。英語では不可能。
-- **項の脱落** — 「パンを切った」で完結し自然。憲章の「抽象度のグラデーション」は日本語話者には説明を要しない。英語話者は受動態で近似するしかない。
+- **項の脱落** — 「パンを切った」で完結し自然。言語仕様の「抽象度のグラデーション」は日本語話者には説明を要しない。英語話者は受動態で近似するしかない。
 - **格の分離可能性** — 日本語の格助詞は名詞に融合せず後接する。ラテン語やロシア語の格語尾とは違う。`:` は機能的に格助詞である。
 
 すなわち本企画は、**英語語彙の世界的普遍性と、日本語構造の論理性を組み合わせる。** 英語語彙の形式言語を英語で語ると、どの直感が設計由来でどの直感が英語からの漏れ込みかを切り分けられない。日本語で書けば境界が強制的に明示化される——`agt:` を「主語だよね」で済ませられない。
@@ -201,7 +201,7 @@ Framingoは、**語彙は英語だが、文法は日本語である。** 格標�
 
 ## The Name / 名前について
 
-**EN** — **Framingo** is *framing* — Charles Fillmore's frame semantics, the theoretical basis of the case system in chapter 2 — suffixed with the Japanese **語** (*-go*), the ending by which Japanese names a language: 日本語, 英語, フランス語. **Framing-go: the framing language.** The word is therefore built the way this language is: an English root, a Japanese grammatical ending.
+**EN** — **Framingo** is *framing* — Charles Fillmore's frame semantics, the theoretical basis of the case system in the language specification — suffixed with the Japanese **語** (*-go*), the ending by which Japanese names a language: 日本語, 英語, フランス語. **Framing-go: the framing language.** The word is therefore built the way this language is: an English root, a Japanese grammatical ending.
 
 The name is deliberately vague about scope, and that is the point. A name that states a thesis precisely must be abandoned when the thesis grows — BackRub became Google, Twitter became X, Facebook became Meta, all because the name had fixed a boundary the thing outgrew. Java, Python, Rust and Amazon never had that problem, because they never claimed anything. **This project does not yet know what it will become. The name reserves the room; the prose below carries the precision, because prose can be revised and names cannot.**
 
@@ -234,7 +234,7 @@ English is not without role marking — it has prepositions. But prepositions ma
 
 **The two most important arguments carry no marker at all.** Old English inflected for nominative, accusative, genitive and dative; modern English kept case only in the pronouns (*he/him*) and the genitive clitic. When the inflections went, the means of marking core arguments went with them — and word order had to take over the load.
 
-**This is why English must reach for the passive.** A language whose word order carries the roles cannot spend its word order on viewpoint. To make "the bread" the subject, English must relocate the noun, recast the verb, and demote the agent into a *by*-phrase. Japanese, whose particles carry the roles, can say 「パンをジョンが切った」: the order changes, the verb does not. Japanese has a passive too; the difference is that in English, **because word order is occupied by the roles, shifting viewpoint means rebuilding the sentence.** The charter calls this the "viewpoint-dependent syntactic twist" that forces a model to spend its attention on surface parsing. The twist is not a stylistic accident; it is what a missing marker costs.
+**This is why English must reach for the passive.** A language whose word order carries the roles cannot spend its word order on viewpoint. To make "the bread" the subject, English must relocate the noun, recast the verb, and demote the agent into a *by*-phrase. Japanese, whose particles carry the roles, can say 「パンをジョンが切った」: the order changes, the verb does not. Japanese has a passive too; the difference is that in English, **because word order is occupied by the roles, shifting viewpoint means rebuilding the sentence.** The specification calls this the "viewpoint-dependent syntactic twist" that forces a model to spend its attention on surface parsing. The twist is not a stylistic accident; it is what a missing marker costs.
 
 The design follows in one line: **the vocabulary was never the problem. Keep it. Replace the role marking.**
 
@@ -248,7 +248,7 @@ The concept is romanized **teniwoha** throughout: the form a Japanese writer's h
 
 ---
 
-**JA** — **Framingo（フレーミンゴ）**は、*framing* ── Charles Fillmore のフレーム意味論、第2章の格体系の理論的基盤 ── に、日本語の **語** を接合したものである。日本語が言語を名付ける接尾辞、すなわち日本語・英語・フランス語の「語」である。**Framing-語、フレーミング語。** つまりこの語自体が、この言語と同じ作りをしている ── **英語の語根に、日本語の文法的語尾。**
+**JA** — **Framingo（フレーミンゴ）**は、*framing* ── Charles Fillmore のフレーム意味論、言語仕様の格体系の理論的基盤 ── に、日本語の **語** を接合したものである。日本語が言語を名付ける接尾辞、すなわち日本語・英語・フランス語の「語」である。**Framing-語、フレーミング語。** つまりこの語自体が、この言語と同じ作りをしている ── **英語の語根に、日本語の文法的語尾。**
 
 名前は射程について意図的に曖昧であり、それが狙いである。主張を正確に述べた名前は、主張が育ったときに捨てねばならない ── BackRub は Google に、Twitter は X に、Facebook は Meta に改名した。いずれも名前が境界を固定し、実体がそれを越えたからである。Java も Python も Rust も Amazon もその問題を持たなかった。**何も主張していなかったからである。**
 
@@ -283,7 +283,7 @@ The concept is romanized **teniwoha** throughout: the form a Japanese writer's h
 
 **最も重要な二つの項に、印が一切ない。** 古英語は主格・対格・属格・与格に屈折したが、現代英語が保持した格は代名詞（*he/him*）と属格の `'s` だけである。屈折が失われたとき、**中核項を標示する手段もろとも失われ**、その負荷を語順が引き受けることになった。
 
-**だから英語は受動態に頼らざるをえない。** 語順が役割を担っている言語では、語順を視点のために使えない。「パン」を主語に据えるには、英語は名詞を移し、動詞を組み替え、動作主を *by* 句へ降格させねばならない。助詞が役割を担う日本語は、「パンをジョンが切った」と言える。語順は変わるが、動詞は変わらない。受動態は日本語にもある。違いは、英語では**語順が役割に占有されているため、視点を動かすことが文を組み替えることを意味する**点にある。憲章はこれを「視点に依存した統語的ねじれ」と呼び、モデルに表層解析の負荷を強いる元凶とした。**このねじれは文体上の偶然ではない。印の欠落の代償である。**
+**だから英語は受動態に頼らざるをえない。** 語順が役割を担っている言語では、語順を視点のために使えない。「パン」を主語に据えるには、英語は名詞を移し、動詞を組み替え、動作主を *by* 句へ降格させねばならない。助詞が役割を担う日本語は、「パンをジョンが切った」と言える。語順は変わるが、動詞は変わらない。受動態は日本語にもある。違いは、英語では**語順が役割に占有されているため、視点を動かすことが文を組み替えることを意味する**点にある。言語仕様はこれを「視点に依存した統語的ねじれ」と呼び、モデルに表層解析の負荷を強いる元凶とした。**このねじれは文体上の偶然ではない。印の欠落の代償である。**
 
 設計は一行で従う。**問題は語彙ではなかった。語彙は保つ。役割標示だけを差し替える。**
 

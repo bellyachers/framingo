@@ -46,7 +46,7 @@ Organized by **what a version would have to do to earn the name.**
 
 | Name | Who | Would name a version that… / こういう世代に |
 |---|---|---|
-| **Mikami** | 三上章 Mikami Akira (1903–1971)。『象は鼻が長い』(1960)、**主語廃止論** | Formalizes the removal of the subject as a privileged slot; establishes topic (題目) vs. complements (補語) as the real division / **主語という特権スロットの廃止を形式化する世代。**憲章2.1の主張そのもの |
+| **Mikami** | 三上章 Mikami Akira (1903–1971)。『象は鼻が長い』(1960)、**主語廃止論** | Formalizes the removal of the subject as a privileged slot; establishes topic (題目) vs. complements (補語) as the real division / **主語という特権スロットの廃止を形式化する世代。**言語仕様第2章1.1節の主張そのもの |
 | **Teniwoha** | てにをは。助詞＝格標示そのものを指す古典的呼称。語源はヲコト点 | Completes the case-marking system — the generation that finishes what the name describes: supplying English with the particles it lacks / **格標示体系を完成させる世代。**英語に欠けている助詞を供給しきった世代が得る |
 | **Fillmore** | Charles J. Fillmore (1929–2014)。「The Case for Case」(1968)、フレーム意味論、**FrameNet**（未完） | Completes the frame inventory — the machine-readable catalogue of frames and their elements he did not finish / **FrameNet を完成させる世代。**彼が未完のまま遺した、フレームと格要素の機械可読な目録 |
 | **Tesnière** | Lucien Tesnière (1893–1954)。結合価・actant、依存文法 | Introduces **valency frames** — which slots each predicate requires, permits, or forbids / 述語ごとの結合価（必須・任意・禁止スロット）を導入する世代 |
@@ -65,7 +65,7 @@ Organized by **what a version would have to do to earn the name.**
 | **Parsons** | Terence Parsons (b. 1939)。ネオ・デイヴィドソン流の定式化 | Formalizes the flat conjunctive semantics rigorously / フラットな連言意味論の厳密な形式化 |
 | **Vendler** | Zeno Vendler (1921–2004)。動詞の相分類 | Systematizes `asp:` on aktionsart classes / `asp:` を動作様態分類に基づいて体系化する世代 |
 | **Reichenbach** | Hans Reichenbach (1891–1953)。E/R/S 時制体系 | Rebuilds `tense:` on speech/event/reference points / 発話時・事象時・参照時で `tense:` を作り直す世代 |
-| **Krifka** | Manfred Krifka (b. 1956)。事象の部分論、漸増的主題、終結性 | Puts the mereology (`.Slice` / `.Piece` / `.Half`) on a formal footing and links it to telicity / **部分論と終結性を形式的に接続する世代。**憲章第3章の直系 |
+| **Krifka** | Manfred Krifka (b. 1956)。事象の部分論、漸増的主題、終結性 | Puts the mereology (`.Slice` / `.Piece` / `.Half`) on a formal footing and links it to telicity / **部分論と終結性を形式的に接続する世代。**言語仕様第3章の直系 |
 | **Bach** | Emmon Bach (1929–2014)。eventualities | Unifies states and events under one ontology / 状態と事象を単一存在論に統一する世代 |
 
 ### C. Causation, force and affordance / 因果・力・アフォーダンス
@@ -93,7 +93,7 @@ Organized by **what a version would have to do to earn the name.**
 
 ### E. The minimal core / 最小核
 
-*The open problem of §4.3. / 4.3節の未解決問題。*
+*The open problem of charter §4.3. / 憲章4.3節の未解決問題。*
 
 | Name | Who | Would name a version that… |
 |---|---|---|
@@ -110,7 +110,7 @@ Organized by **what a version would have to do to earn the name.**
 | **Gentzen** | Gerhard Gentzen (1909–1945)。自然演繹、シークエント計算 | Gives the verifier a proof system with cut elimination / 検証器にカット除去を備えた証明体系を与える世代 |
 | **Tarski** | Alfred Tarski (1901–1983)。真理定義、モデル理論 | Supplies a model-theoretic semantics for the language / 言語にモデル論的意味論を与える世代 |
 | **Skolem** | Thoralf Skolem (1887–1963)。スコーレム化 | Eliminates quantifiers into ground form / 量化子を基底形へ除去する世代 |
-| **Peirce** | C.S. Peirce (1839–1914)。**アブダクション**の命名者 | Formalizes abductive inference — the cause-from-effect task / **遡行推論を形式化する世代**（第5章テスト3） |
+| **Peirce** | C.S. Peirce (1839–1914)。**アブダクション**の命名者 | Formalizes abductive inference — the cause-from-effect task / **遡行推論を形式化する世代**（言語仕様第2章 6.4節の `QUERY:` によるアブダクション） |
 | **Kripke** | Saul Kripke (1940–2022)。可能世界 | Underpins modality (`mod:`) and hypotheticals / 様態と仮定の基盤を与える世代 |
 | **Frege** | Gottlob Frege (1848–1925)。述語論理、意義と指示 | A foundational rebuild of predicate structure / 述語構造の基礎的再構築 |
 | **Montague** | Richard Montague (1930–1971)。形式意味論 | Compositional semantics with a formal interpretation function / 形式的解釈関数を伴う合成的意味論 |
@@ -122,7 +122,7 @@ Organized by **what a version would have to do to earn the name.**
 | **Leibniz** | G.W. Leibniz (1646–1716)。characteristica universalis、calculus ratiocinator | A generational leap toward the universal characteristic — reserve for a major milestone / 普遍記号法への飛躍。**大きな節目のために留保する** |
 | **Llull** | Ramon Llull (c.1232–1316)。『Ars Magna』 | Introduces combinatorial generation over the concept space / 概念空間上の組合せ的生成を導入する世代 |
 | **Wilkins** | John Wilkins (1614–1672)。『Real Character』(1668) | Completes the ontological taxonomy of base entities / 基底実体の存在論的分類を完成させる世代 |
-| **Zamenhof** | L.L. Zamenhof (1859–1917)。エスペラント | Overhauls the affix system / 接辞体系を全面改訂する世代（第3章の接辞はここから来ている） |
+| **Zamenhof** | L.L. Zamenhof (1859–1917)。エスペラント | Overhauls the affix system / 接辞体系を全面改訂する世代（言語仕様第3章の接辞はここから来ている） |
 | **Ogden** | C.K. Ogden (1889–1957)。Basic English (850語) | Achieves a drastic vocabulary reduction without loss / 表現力を落とさずに語彙を劇的に削減する世代 |
 
 ### H. Japanese linguistics / 日本語学
@@ -144,20 +144,20 @@ Organized by **what a version would have to do to earn the name.**
 
 **EN**
 
-- **Mikami** — Charter §2.1.1 states outright that *"the privileged slot called 'subject' does not exist"* in physical reality. Mikami Akira argued precisely this about Japanese from the 1950s, most famously in 『象は鼻が長い』(1960): Japanese has no subject, only a topic and a set of complements. **The charter reinvented his thesis without knowing his name.** He belongs near the front of the line.
+- **Mikami** — The language specification (ch.2 §1.1) states outright that *"the privileged slot called 'subject' does not exist"* in physical reality. Mikami Akira argued precisely this about Japanese from the 1950s, most famously in 『象は鼻が長い』(1960): Japanese has no subject, only a topic and a set of complements. **The specification reinvented his thesis without knowing his name.** He belongs near the front of the line.
 - **Herbrand** — the Herbrand universe *is* the set of all ground terms. The Grounding Constraint's domain already has a name, and it is his.
 - **Talmy** — force dynamics distinguishes CAUSE, LET, PREVENT and HELP as primitives. `->` and `!>` are two members of his inventory; a version that adds the rest is his.
 - **Krifka** — the mereology of events and the incremental-theme analysis are the formal counterpart of `.Slice` / `.Half` / `.Piece` and of when a cutting event completes.
-- **Wierzbicka** — NSM is the only serious prior attempt to fix a minimal semantic core. Whoever solves §4.3 inherits her problem.
+- **Wierzbicka** — NSM is the only serious prior attempt to fix a minimal semantic core. Whoever solves charter §4.3 inherits her problem.
 - **Clark** — "grounding" in his sense is what speaker and hearer establish together. That the word collides with the Grounding Constraint is a coincidence worth keeping.
 
 **JA**
 
-- **三上** — 憲章2.1.1は「物理的現実において『主語』という特権的なスロットは本来存在しない」と明言している。三上章は1950年代から日本語についてまさにこれを論じ、『象は鼻が長い』(1960) で「日本語に主語はない、あるのは題目と補語だけだ」と主張した。**憲章は彼の名を知らずに彼の主張を再発明していた。** 系列の前方に置かれるべき名前である。
+- **三上** — 言語仕様第2章1.1節は「物理的現実において『主語』という特権的なスロットは本来存在しない」と明言している。三上章は1950年代から日本語についてまさにこれを論じ、『象は鼻が長い』(1960) で「日本語に主語はない、あるのは題目と補語だけだ」と主張した。**言語仕様は彼の名を知らずに彼の主張を再発明していた。** 系列の前方に置かれるべき名前である。
 - **Herbrand** — エルブラン領域とは、基底項の全体そのものである。接地制約が扱う対象には既に名前があり、それは彼の名である。
 - **Talmy** — 力動性は CAUSE・LET・PREVENT・HELP をプリミティブとして区別する。`->` と `!>` は彼の目録の二要素にすぎない。残りを実装する世代は彼のものである。
 - **Krifka** — 事象の部分論と漸増的主題の分析は、`.Slice` / `.Half` / `.Piece` と「切断がいつ完了するか」の形式的対応物である。
-- **Wierzbicka** — NSM は、最小意味核の確定を真剣に試みた唯一の先行研究である。4.3節を解く者は、彼女の問題を引き継ぐ。
+- **Wierzbicka** — NSM は、最小意味核の確定を真剣に試みた唯一の先行研究である。憲章4.3節を解く者は、彼女の問題を引き継ぐ。
 - **Clark** — 彼の言う grounding は、話者と聴者が共同で確立するものである。接地制約と語が衝突しているのは偶然だが、残す価値のある偶然である。
 
 ---
