@@ -14,8 +14,8 @@ The Framingo Project     フレーミンゴ計画      the undertaking
 
 **知識と論理を分離したモデルのための形式言語。幻覚を「減らす」のではなく、「機械的に検出可能にする」。**
 
-> **Status / 状態** — Design charter. No implementation yet. Contributions and criticism welcome.
-> 設計憲章の段階。実装はまだない。批判・貢献を歓迎する。
+> **Status / 状態** — Design charter, with implementation just begun: a parser for the v1 specification. Contributions and criticism welcome.
+> 設計憲章の段階。実装は着手したばかりで、v1 仕様のパーサがある。批判・貢献を歓迎する。
 
 ---
 
@@ -384,9 +384,9 @@ Contributions are therefore judged the same way regardless of whether a human or
 ## License / ライセンス
 
 Documentation and specification: [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
-Code, when it exists, will be Apache 2.0.
+Code: [Apache 2.0](LICENSE-CODE).
 
-文書および仕様：CC BY 4.0。コードは、存在するようになった時点で Apache 2.0。
+文書および仕様：CC BY 4.0。コード：Apache 2.0（`LICENSE-CODE`）。
 
 A specification under a copyleft license does not get adopted. That would defeat the purpose.
 コピーレフトの仕様は採用されない。それでは目的に反する。
