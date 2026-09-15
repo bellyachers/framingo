@@ -1,0 +1,2 @@
+// Minimal core: axioms about how the world behaves (charter §4.2 b)
+RULE: Action: Drop tgt:Every.Break-prone.Thing -> Result: Become agt:It.Piece

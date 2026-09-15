@@ -1,0 +1,3 @@
+// "Mary" appears nowhere; John never dropped a vase
+FACT: Action: Drop agt:Mary tgt:Glass.Cup
+FACT: Action: Drop agt:John tgt:Vase

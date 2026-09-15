@@ -1,0 +1,2 @@
+// Knowledge retrieved into context for this question
+FACT: Action: Drop agt:John tgt:Break-prone.Glass.Cup dst:Stone.Floor
