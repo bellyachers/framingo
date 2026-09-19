@@ -44,9 +44,9 @@ import torch.nn.functional as F
 
 from framingo import ParseError, parse, parse_one
 from framingo.corpus import build
-from framingo.grounding import check
+from framingo.grounding import check, entails
 from framingo.render import tokens
-from framingo.syntax import Pipeline, Statement
+from framingo.syntax import Concept, Pipeline, Statement
 from framingo.world import core_rules
 
 PAD, BOS, SEP, EOS = "<pad>", "<bos>", "<sep>", "<eos>"
@@ -202,10 +202,22 @@ def is_omission(pred: str, gold: str) -> bool:
     (``!>``) is a fabrication, not an omission.
     """
     gold_events = _linked(gold)
-    return all(
-        any(pc == gc and p.verb == g.verb and p.slots <= g.slots for gc, g in gold_events)
-        for pc, p in _linked(pred)
-    )
+    nouns = frozenset(c.segments[-1] for _, g in gold_events for c in _slot_concepts(g))
+
+    def weaker(p, g) -> bool:
+        # every predicted slot is a gold slot, possibly with modifiers
+        # dropped (the same entailment the checker uses)
+        return p.verb == g.verb and all(
+            any(gk == k and (gv == v or (isinstance(gv, Concept) and isinstance(v, Concept) and entails(gv, v, nouns)))
+                for gk, gv in g.slots)
+            for k, v in p.slots
+        )
+
+    return all(any(pc == gc and weaker(p, g) for gc, g in gold_events) for pc, p in _linked(pred))
+
+
+def _slot_concepts(event) -> list[Concept]:
+    return [v for _, v in event.slots if isinstance(v, Concept)]
 
 
 def evaluate(rows, predictions: list[str], form: str) -> dict:

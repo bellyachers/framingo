@@ -42,7 +42,6 @@ LIMITS = (
     "Only `It` / `It<X>` anaphora is resolved; no other pronouns exist in v1.",
     "QUERY statements are not relation-checked, and RULE statements in the output are token-checked only.",
     "`mod:`, `freq:` and `asp:` carry no semantics; they are compared as plain slots.",
-    "Order of modifiers inside a dot chain is ignored when testing entailment.",
 )
 
 CLOSED_CLASS = frozenset(
@@ -136,6 +135,21 @@ def resolve_events(events: Iterable[Event]) -> list[Event]:
 # -- matching ----------------------------------------------------------------
 
 
+def _dropped(fact: tuple[str, ...], claim: tuple[str, ...]) -> list[str] | None:
+    """Segments removed if ``claim`` is an in-order subsequence of ``fact``, else None.
+
+    Order and multiplicity both count: a set comparison let a model's
+    ``Plate.Plate.Piece`` pass as grounded by ``Plate.Piece``.
+    """
+    dropped, i = [], 0
+    for seg in fact:
+        if i < len(claim) and claim[i] == seg:
+            i += 1
+        else:
+            dropped.append(seg)
+    return dropped if i == len(claim) else None
+
+
 def entails(fact: Concept, claim: Concept, nouns: frozenset[str] = frozenset()) -> bool:
     """Does knowing ``fact`` support asserting ``claim``?
 
@@ -143,13 +157,13 @@ def entails(fact: Concept, claim: Concept, nouns: frozenset[str] = frozenset()) 
     """
     if fact == claim:
         return True
-    dropped = set(fact.segments) - set(claim.segments)
+    dropped = _dropped(fact.segments, claim.segments)
     return (
         fact.negated == claim.negated
         and bool(claim.segments)
         and fact.segments[-1:] == claim.segments[-1:]
-        and set(claim.segments) <= set(fact.segments)
-        and not (dropped & nouns)
+        and dropped is not None
+        and not (set(dropped) & nouns)
         and (claim.instance is None or claim.instance == fact.instance)
         and claim.determiner in (None, fact.determiner)
     )

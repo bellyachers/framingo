@@ -138,3 +138,11 @@ def test_omitting_a_slot_is_not_a_hallucination():
     context = parse("FACT: Action: Drop agt:Mary tgt:Vase src:On.Table")
     core = parse("RULE: Action: Drop tgt:Vase src:On.Table -> Fall tgt:It src:On.Table dst:Floor")
     assert check(parse("FACT: Fall tgt:Vase dst:Floor"), context, core).ok
+
+
+def test_a_repeated_word_is_not_grounded():
+    # A trained model produced `Plate.Plate.Piece` and `Red.Red.Tomato`.
+    assert not entails(parse_concept("Plate.Piece"), parse_concept("Plate.Plate.Piece"))
+    assert not entails(parse_concept("Red.Tomato"), parse_concept("Red.Red.Tomato"))
+    assert not entails(parse_concept("Round.Red.Apple"), parse_concept("Red.Round.Apple"))
+    assert entails(parse_concept("Round.Red.Apple"), parse_concept("Round.Apple"))
