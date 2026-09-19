@@ -1,4 +1,4 @@
-"""Command line: ``framingo parse FILE...`` and ``framingo check``."""
+"""Command line: ``framingo parse``, ``framingo check`` and ``framingo corpus``."""
 
 from __future__ import annotations
 
@@ -29,7 +29,23 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--context", action="append", default=[], help="knowledge placed in context")
     c.add_argument("--core", action="append", default=[], help="minimal core axioms")
 
+    g = sub.add_parser("corpus", help="generate the proposition-3 corpus as JSON lines")
+    g.add_argument("out")
+    g.add_argument("--train", type=int, default=20000)
+    g.add_argument("--iid", type=int, default=2000)
+    g.add_argument("--held", type=int, default=1000)
+    g.add_argument("--seed", type=int, default=0)
+
     args = ap.parse_args(argv)
+    if args.command == "corpus":
+        from collections import Counter
+
+        from .corpus import build, write
+
+        records = build(args.train, args.iid, args.held, args.seed)
+        write(records, Path(args.out))
+        print(dict(Counter(r.split for r in records)))
+        return 0
     if args.command == "parse":
         for path in args.files:
             for statement in _load(path):
