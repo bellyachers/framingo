@@ -4,8 +4,10 @@ Splits are decided on meaning, never on surface text, so no test meaning can
 leak into training through its other rendering.
 
 - ``train`` / ``test_iid``: random meanings, disjoint.
-- ``test_role``: Push or Carry with ``Cat`` as target. Cat appears in training only
-  as an agent. A model that binds roles from explicit tags should handle
+- ``test_role``: Carry with ``Cat`` as the carried. In training Cat is only
+  ever the carrier, and so does occur in training outputs (``At tgt:Cat``
+  for where the carrier ended up); only its role is new. See world.py for
+  why that matters. A model that binds roles from explicit tags should handle
   this; one that binds roles from position must generalise a positional
   habit to a token it has only seen in the other position.
 - ``test_combo``: targets pairing a modifier and base never paired in

@@ -16,11 +16,19 @@ Physics, deliberately tiny:
 - Drop and Push make the target fall; a break-prone target then becomes pieces.
 - Drop and Push may name where the target fell from (``src:``); the fall
   keeps that source.
-- Carry moves the target to a place: ``Carry agt:A tgt:Y dst:P`` gives
-  ``At tgt:Y loc:P``.
-- Push and Carry can target animates as well as objects. This is what gives
-  the role-swap split something to test: an animate that is only ever an
-  agent in training must be recognised as a target at test time.
+- Carry moves both the target and the carrier: ``Carry agt:A tgt:Y dst:P``
+  gives ``At tgt:Y loc:P -> At tgt:A loc:P``.
+- Carry can target animates as well as objects. This is what gives the
+  role-swap split something to test: an animate that is only ever a carrier
+  in training must be recognised as the carried at test time.
+
+Why the carrier appears in the result: the first version named only the
+target in results, so an animate held out as a target never occurred in any
+training output at all. A model then fails the role-swap test simply
+because it has never emitted that word, whatever the input form, and the
+test measures output-vocabulary priors instead of role binding (the same
+trap as SCAN's held-out primitive). With the carrier in the result, the
+held-out animate is a familiar output token, and only its role is new.
 """
 
 from __future__ import annotations
@@ -56,9 +64,9 @@ KINDS = (
 KIND = {k.base: k for k in KINDS}
 
 TOOLS = ("Knife", "Ruler")
-PLACES = ("Kitchen", "Garden", "Hall")
+PLACES = ("Kitchen", "Garden", "Hall", "Yard", "Attic")
 SOURCES = (("On", "Table"), ("On", "Chair"), ("On", "Shelf"))
-ANIMATE_TARGET_VERBS = ("Push", "Carry")
+ANIMATE_TARGET_VERBS = ("Carry",)
 
 
 def C(*segments: str) -> Concept:
@@ -94,7 +102,8 @@ def consequence(action: Event) -> Pipeline:
         return Pipeline((slices, deformed), ("->",))
     if verb == "Carry":
         (place,) = action.get("dst")
-        return Pipeline((ev("At", tgt=target, loc=place),))
+        (agent,) = action.get("agt")
+        return Pipeline((ev("At", tgt=target, loc=place), ev("At", tgt=agent, loc=place)), ("->",))
     if verb in ("Drop", "Push"):
         src = {"src": s for s in action.get("src")}
         fall = ev("Fall", tgt=target, dst=C("Floor"), **src)
@@ -176,7 +185,7 @@ def core_rules() -> str:
             )
     targets = [(k.base, k.break_prone) for k in KINDS] + [(a, False) for a in ANIMATES]
     for base, break_prone in targets:
-        verbs = ("Drop", "Push") if base in KIND else ("Push",)
+        verbs = ("Drop", "Push") if base in KIND else ()
         for verb in verbs:
             for src in [None] + [".".join(s) for s in SOURCES]:
                 src_slot = f" src:{src}" if src else ""
@@ -184,5 +193,9 @@ def core_rules() -> str:
                 then = " -> Result: Become agt:It.Piece" if break_prone else ""
                 lines.append(f"RULE: Action: {verb} tgt:{base}{src_slot} -> {fall}{then}")
         for place in PLACES:
-            lines.append(f"RULE: Action: Carry tgt:{base} dst:{place} -> At tgt:It loc:{place}")
+            # <A> carries the carrier across to the second event (spec ch.3 §5.2)
+            lines.append(
+                f"RULE: Action: Carry agt:Every.Thing<A> tgt:{base} dst:{place}"
+                f" -> At tgt:It loc:{place} -> At tgt:It<A> loc:{place}"
+            )
     return "\n".join(lines)

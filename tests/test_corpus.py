@@ -66,12 +66,22 @@ def test_word_order_form_marks_core_roles_by_position_only():
     assert word_order_event(ev("Fall", tgt=C("Vase"), dst=C("Floor"))) == "Vase Fall onto Floor"
 
 
-def test_held_out_role_never_appears_as_target_in_training(records):
+def test_held_out_role_never_appears_as_target_in_training_inputs(records):
+    def action_targets(r):
+        return [str(v) for v in parse_one(r.tagged_in).pipeline.events[0].get("tgt")]
+
     train = [r for r in records if r.split == "train"]
-    assert not any(f"tgt:{ROLE_HELD_OUT}" in r.meaning for r in train)
-    assert any(f"agt:{ROLE_HELD_OUT}" in r.meaning for r in train)
+    assert not any(ROLE_HELD_OUT in action_targets(r) for r in train)
+    assert any(f"agt:{ROLE_HELD_OUT}" in r.tagged_in for r in train)
     role = [r for r in records if r.split == "test_role"]
-    assert role and all(f"tgt:{ROLE_HELD_OUT}" in r.meaning for r in role)
+    assert role and all(action_targets(r) == [ROLE_HELD_OUT] for r in role)
+
+
+def test_held_out_animate_is_a_familiar_output_token(records):
+    # Otherwise the role-swap test only measures whether a model can emit a
+    # word it never emitted in training, whatever the input form (world.py).
+    train_outputs = " ".join(r.tagged_out for r in records if r.split == "train")
+    assert f"tgt:{ROLE_HELD_OUT}" in train_outputs
 
 
 def test_held_out_combinations_never_appear_in_training(records):
