@@ -1,9 +1,12 @@
 """Two surface forms for one meaning: the variable of charter proposition 3.
 
-F (Framingo): every argument carries its role tag; slot order is shuffled,
-so position carries nothing.
+The names follow the proposition itself (charter ch.8): the *role-tagged
+flat form* and the *word-order-dependent form*.
 
-W (word order): English-shaped. Core arguments are marked by position alone
+Role-tagged flat form (``tagged``): every argument carries its role tag;
+slot order is shuffled, so position carries nothing.
+
+Word-order-dependent form (``word_order``): English-shaped. Core arguments are marked by position alone
 (agent before the verb, target after it); peripheral ones by a preposition,
 as English does (README, "The precise claim"). Viewpoint is varied with a
 passive, which moves the target to the front and the agent behind ``by``.
@@ -36,27 +39,27 @@ def _slot(event: Event, key: str) -> Concept | None:
     return values[0] if values else None
 
 
-# -- F -----------------------------------------------------------------------
+# -- role-tagged flat form ---------------------------------------------------------------------
 
 
-def f_event(event: Event, rng: random.Random | None) -> str:
+def tagged_event(event: Event, rng: random.Random | None) -> str:
     slots = [f"{k}:{_concept(v)}" for k, v in sorted(event.slots, key=lambda kv: kv[0])]
     if rng is not None:
         rng.shuffle(slots)
     return " ".join([_concept(event.verb)] + slots)
 
 
-def f_pipeline(p: Pipeline, rng: random.Random | None = None) -> str:
-    out = [f_event(p.events[0], rng)]
+def tagged_pipeline(p: Pipeline, rng: random.Random | None = None) -> str:
+    out = [tagged_event(p.events[0], rng)]
     for c, e in zip(p.connectors, p.events[1:]):
-        out += [c, f_event(e, rng)]
+        out += [c, tagged_event(e, rng)]
     return " ".join(out)
 
 
-# -- W -----------------------------------------------------------------------
+# -- word-order-dependent form ---------------------------------------------------------------------
 
 
-def w_event(event: Event, passive: bool = False) -> str:
+def word_order_event(event: Event, passive: bool = False) -> str:
     verb = _concept(event.verb)
     agt, tgt = _slot(event, "agt"), _slot(event, "tgt")
     if passive and agt is not None and tgt is not None:
@@ -74,10 +77,10 @@ def w_event(event: Event, passive: bool = False) -> str:
     return " ".join(core + periphery)
 
 
-def w_pipeline(p: Pipeline, passive_first: bool = False) -> str:
-    out = [w_event(p.events[0], passive_first)]
+def word_order_pipeline(p: Pipeline, passive_first: bool = False) -> str:
+    out = [word_order_event(p.events[0], passive_first)]
     for c, e in zip(p.connectors, p.events[1:]):
-        out += [c, w_event(e)]
+        out += [c, word_order_event(e)]
     return " ".join(out)
 
 

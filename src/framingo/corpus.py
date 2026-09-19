@@ -20,7 +20,7 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 
-from .render import f_pipeline, w_pipeline
+from .render import tagged_pipeline, word_order_pipeline
 from .syntax import Concept, Pipeline
 from .world import Sample, sample
 
@@ -47,10 +47,10 @@ def split_of(s: Sample) -> str | None:
 class Record:
     split: str
     meaning: str
-    f_in: str
-    f_out: str
-    w_in: str
-    w_out: str
+    tagged_in: str
+    tagged_out: str
+    word_order_in: str
+    word_order_out: str
     passive: bool
 
     def to_json(self) -> str:
@@ -64,10 +64,10 @@ def render(s: Sample, split: str, rng: random.Random) -> Record:
     return Record(
         split=split,
         meaning=str(s.meaning()),
-        f_in=f_pipeline(action, rng),
-        f_out=f"{s.connector} {f_pipeline(s.result, rng)}",
-        w_in=w_pipeline(action, passive_first=passive),
-        w_out=f"{s.connector} {w_pipeline(s.result)}",
+        tagged_in=tagged_pipeline(action, rng),
+        tagged_out=f"{s.connector} {tagged_pipeline(s.result, rng)}",
+        word_order_in=word_order_pipeline(action, passive_first=passive),
+        word_order_out=f"{s.connector} {word_order_pipeline(s.result)}",
         passive=passive,
     )
 

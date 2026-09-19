@@ -8,7 +8,7 @@ import pytest
 from framingo import parse, parse_one
 from framingo.corpus import COMBOS_HELD_OUT, ROLE_HELD_OUT, build
 from framingo.grounding import check
-from framingo.render import tokens, w_event
+from framingo.render import tokens, word_order_event
 from framingo.syntax import Pipeline, Statement
 from framingo.world import C, core_rules, ev, sample
 
@@ -41,29 +41,29 @@ def test_ruler_prevents_slicing():
     assert [e.verb.segments[0] for e in consequence(s).events] == ["Become", "Deform"]
 
 
-def test_f_form_parses_back_to_the_meaning(records):
+def test_tagged_form_parses_back_to_the_meaning(records):
     for r in records[:500]:
         meaning = parse_one(r.meaning).pipeline
-        rendered = parse_one(f"{r.f_in} {r.f_out}").pipeline
+        rendered = parse_one(f"{r.tagged_in} {r.tagged_out}").pipeline
         assert [e.slots for e in rendered.events] == [e.slots for e in meaning.events]
         assert rendered.connectors == meaning.connectors
 
 
 def test_forms_share_all_content_tokens(records):
-    # The only difference allowed between F and W is role marking.
+    # The only difference allowed between the two forms is role marking.
     role_marks = {"agt:", "tgt:", "tool:", "src:", "dst:", "loc:", "reason:"}
-    w_marks = {"with", "from", "onto", "in", "because", "was", "by"}
+    word_order_marks = {"with", "from", "onto", "in", "because", "was", "by"}
     for r in records[:500]:
-        f = Counter(t for t in tokens(f"{r.f_in} {r.f_out}") if t not in role_marks)
-        w = Counter(t for t in tokens(f"{r.w_in} {r.w_out}") if t not in w_marks)
+        f = Counter(t for t in tokens(f"{r.tagged_in} {r.tagged_out}") if t not in role_marks)
+        w = Counter(t for t in tokens(f"{r.word_order_in} {r.word_order_out}") if t not in word_order_marks)
         assert f == w, r
 
 
-def test_w_form_marks_core_roles_by_position_only():
+def test_word_order_form_marks_core_roles_by_position_only():
     e = ev("Push", agt=C("Cat"), tgt=C("Blue", "Vase"), tool=C("Knife"))
-    assert w_event(e) == "Cat Push Blue.Vase with Knife"
-    assert w_event(e, passive=True) == "Blue.Vase was Push by Cat with Knife"
-    assert w_event(ev("Fall", tgt=C("Vase"), dst=C("Floor"))) == "Vase Fall onto Floor"
+    assert word_order_event(e) == "Cat Push Blue.Vase with Knife"
+    assert word_order_event(e, passive=True) == "Blue.Vase was Push by Cat with Knife"
+    assert word_order_event(ev("Fall", tgt=C("Vase"), dst=C("Floor"))) == "Vase Fall onto Floor"
 
 
 def test_held_out_role_never_appears_as_target_in_training(records):
