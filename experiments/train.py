@@ -14,9 +14,15 @@ Evaluation per held-out split:
   prediction (context: the action; core: the world's rules):
   * grounding rate: share of predictions that satisfy the Grounding
     Constraint (charter §11.4 c);
-  * detection rate: share of *wrong* predictions the checker flags
-    (charter ch.8 proposition 2);
-  * false alarms: share of *correct* predictions it flags.
+  * wrong predictions are split into fabrications (some predicted event
+    is not part of the true result, even allowing dropped slots) and
+    omissions (every predicted event is true, but something is missing).
+    Only fabrications are hallucinations in the charter's sense; the
+    Grounding Constraint accepts omissions by design (abstraction);
+  * detection rate: share of fabrications the checker flags (charter ch.8
+    proposition 2);
+  * false alarms: share of correct or merely incomplete predictions it
+    flags.
 
 Torch lives only here, in the optional ``train`` dependency group, so the
 language package itself stays dependency-free.
@@ -183,31 +189,55 @@ def same_meaning(pred: str, gold: str) -> bool:
     ] == [e.verb for e in b.events]
 
 
+def _linked(text: str) -> list[tuple[str, object]]:
+    """Each event paired with the connector that introduces it."""
+    p = parse_one(text).pipeline
+    return list(zip(("->",) + p.connectors, p.events))
+
+
+def is_omission(pred: str, gold: str) -> bool:
+    """Every predicted event is a true event with at most some slots left out.
+
+    The connector counts: claiming with ``->`` what the world prevented
+    (``!>``) is a fabrication, not an omission.
+    """
+    gold_events = _linked(gold)
+    return all(
+        any(pc == gc and p.verb == g.verb and p.slots <= g.slots for gc, g in gold_events)
+        for pc, p in _linked(pred)
+    )
+
+
 def evaluate(rows, predictions: list[str], form: str) -> dict:
     fin, fout = fields(form)
     n = len(rows)
-    correct = parse_fail = grounded = wrong = wrong_flagged = right_flagged = 0
-    examples = []
+    correct = parse_fail = grounded = 0
+    fabricated = fabricated_flagged = omitted = benign_flagged = 0
+    examples, predictions_out = [], []
     for r, pred in zip(rows, predictions):
         full = f"{getattr(r, fin)} {pred}"
+        predictions_out.append(pred)
         if form == "tagged":
             try:
                 ok = same_meaning(full, r.meaning)
                 stmt = parse_one("FACT: " + full)
             except (ParseError, ValueError):
                 parse_fail += 1
-                wrong += 1
-                wrong_flagged += 1  # an unparseable output is rejected outright
+                fabricated += 1
+                fabricated_flagged += 1  # an unparseable output is rejected outright
                 continue
             action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
             report = check([stmt], [action], CORE)
             grounded += report.ok
             if ok:
-                right_flagged += not report.ok
+                benign_flagged += not report.ok
+            elif is_omission(full, r.meaning):
+                omitted += 1
+                benign_flagged += not report.ok
             else:
-                wrong += 1
-                wrong_flagged += not report.ok
-                if len(examples) < 5:
+                fabricated += 1
+                fabricated_flagged += not report.ok
+                if len(examples) < 8:
                     examples.append({"input": getattr(r, fin), "pred": pred, "gold": getattr(r, fout), "grounded": report.ok})
         else:
             ok = pred == getattr(r, fout)
@@ -216,14 +246,17 @@ def evaluate(rows, predictions: list[str], form: str) -> dict:
         correct += ok
     result = {"n": n, "accuracy": correct / n}
     if form == "tagged":
+        benign = correct + omitted
         result.update(
             parse_failures=parse_fail,
             grounding_rate=grounded / n,
-            wrong=wrong,
-            detection_rate=(wrong_flagged / wrong) if wrong else None,
-            false_alarm_rate=(right_flagged / correct) if correct else None,
+            fabricated=fabricated,
+            omitted=omitted,
+            detection_rate=(fabricated_flagged / fabricated) if fabricated else None,
+            false_alarm_rate=(benign_flagged / benign) if benign else None,
         )
     result["examples"] = examples
+    result["predictions"] = predictions_out
     return result
 
 
@@ -292,7 +325,7 @@ def main() -> None:
         prompts = [[vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]] for r in rows]
         preds = [detokenize(p) for p in generate(model, vocab, prompts, device)]
         results[name] = evaluate(rows, preds, args.form)
-        line = {k: v for k, v in results[name].items() if k != "examples"}
+        line = {k: v for k, v in results[name].items() if k not in ("examples", "predictions")}
         print(name, json.dumps(line), flush=True)
 
     out = Path(args.out) / f"{args.form}-seed{args.seed}.json"

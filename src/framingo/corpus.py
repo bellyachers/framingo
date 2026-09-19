@@ -67,7 +67,10 @@ def render(s: Sample, split: str, rng: random.Random) -> Record:
         split=split,
         meaning=str(s.meaning()),
         tagged_in=tagged_pipeline(action, rng),
-        tagged_out=f"{s.connector} {tagged_pipeline(s.result, rng)}",
+        # Inputs are shuffled (order carries nothing); outputs use one fixed
+        # order, as the word-order form's do. Shuffling outputs too made the
+        # target unpredictable and handicapped the role-tagged form.
+        tagged_out=f"{s.connector} {tagged_pipeline(s.result)}",
         word_order_in=word_order_pipeline(action, passive_first=passive),
         word_order_out=f"{s.connector} {word_order_pipeline(s.result)}",
         passive=passive,

@@ -121,3 +121,20 @@ def test_chained_rules_reach_a_fixpoint():
     context = parse("FACT: Action: Push agt:Cat tgt:Break-prone.Vase")
     report = check(parse("FACT: Result: Become agt:Break-prone.Vase.Piece"), context, core)
     assert statuses(report) == ["derived"], str(report)
+
+
+def test_a_noun_may_not_be_dropped_even_when_the_head_survives():
+    # A trained model produced `Blue.Piece` for `Blue.Plate.Piece`.
+    context = parse("FACT: Action: Drop agt:Mary tgt:Break-prone.Blue.Plate")
+    good = check(parse("FACT: Result: Become agt:Blue.Plate.Piece"), context, CORE)
+    bad = check(parse("FACT: Result: Become agt:Blue.Piece"), context, CORE)
+    assert statuses(good) == ["derived"]
+    assert statuses(bad) == ["ungrounded"]
+
+
+def test_omitting_a_slot_is_not_a_hallucination():
+    # Leaving out where something fell from fabricates nothing; the
+    # Grounding Constraint accepts it by design (abstraction, spec ch.2 §3).
+    context = parse("FACT: Action: Drop agt:Mary tgt:Vase src:On.Table")
+    core = parse("RULE: Action: Drop tgt:Vase src:On.Table -> Fall tgt:It src:On.Table dst:Floor")
+    assert check(parse("FACT: Fall tgt:Vase dst:Floor"), context, core).ok

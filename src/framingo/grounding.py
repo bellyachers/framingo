@@ -17,7 +17,11 @@ A HYPO statement may assume its own ``when:`` condition and first event.
 Entailment is deliberately narrow. An output concept is supported by a fact's
 concept when it keeps the same head (last segment) and drops only modifiers:
 ``Red.Apple`` follows from ``Sweet.Red.Apple``, but ``Apple`` does not follow
-from ``Apple.Slice``. In a RULE, a concept ending in ``Thing`` matches any
+from ``Apple.Slice``. Which words are modifiers is not declared anywhere (the
+spec leaves ``Modifier`` / ``BaseEntity`` undefined), so it is read off the
+core and context: a word that ever stands as the head of a concept there is a
+noun and may not be dropped. Without this, ``Blue.Piece`` passed as grounded
+by ``Blue.Plate.Piece``, which a trained model actually produced. In a RULE, a concept ending in ``Thing`` matches any
 concept carrying its modifiers, and ``It`` refers to the target of the nearest
 preceding event (spec ch.3 §5.1). Derivation is forward chaining to a fixpoint.
 
@@ -132,15 +136,20 @@ def resolve_events(events: Iterable[Event]) -> list[Event]:
 # -- matching ----------------------------------------------------------------
 
 
-def entails(fact: Concept, claim: Concept) -> bool:
-    """Does knowing ``fact`` support asserting ``claim``?"""
+def entails(fact: Concept, claim: Concept, nouns: frozenset[str] = frozenset()) -> bool:
+    """Does knowing ``fact`` support asserting ``claim``?
+
+    ``nouns`` are words that may not be dropped (see the module docstring).
+    """
     if fact == claim:
         return True
+    dropped = set(fact.segments) - set(claim.segments)
     return (
         fact.negated == claim.negated
         and bool(claim.segments)
         and fact.segments[-1:] == claim.segments[-1:]
         and set(claim.segments) <= set(fact.segments)
+        and not (dropped & nouns)
         and (claim.instance is None or claim.instance == fact.instance)
         and claim.determiner in (None, fact.determiner)
     )
@@ -201,13 +210,13 @@ def _instantiate(event: Event, binding: dict[Concept, Concept]) -> Event:
     return Event(event.verb, slots, event.label)
 
 
-def supports(fact: Event, claim: Event) -> bool:
+def supports(fact: Event, claim: Event, nouns: frozenset[str] = frozenset()) -> bool:
     if fact.verb != claim.verb:
         return False
     for key, cv in claim.slots:
         candidates = fact.get(key)
         if isinstance(cv, Concept):
-            if not any(isinstance(fv, Concept) and entails(fv, cv) for fv in candidates):
+            if not any(isinstance(fv, Concept) and entails(fv, cv, nouns) for fv in candidates):
                 return False
         elif cv not in candidates:
             return False
@@ -226,6 +235,7 @@ class Knowledge:
     facts: dict[Event, str] = field(default_factory=dict)
     prevented: dict[Event, str] = field(default_factory=dict)
     rules: list[tuple[Statement, str]] = field(default_factory=list)
+    nouns: frozenset[str] = frozenset()
 
     def add_statement(self, statement: Statement, source: str) -> None:
         if statement.prefix == "RULE":
@@ -248,7 +258,7 @@ class Knowledge:
 
     def lookup(self, claim: Event, table: dict[Event, str]) -> str | None:
         for fact, source in table.items():
-            if supports(fact, claim):
+            if supports(fact, claim, self.nouns):
                 return source
         return None
 
@@ -321,7 +331,10 @@ def check(
                 if root(seg) not in vocabulary and seg not in CLOSED_CLASS:
                     report.ungrounded_words.append((seg, statement.line))
 
-    base = Knowledge()
+    nouns = frozenset(
+        c.segments[-1] for s in core + context for c in concepts(s) if c.segments and c.segments[-1] != "It"
+    ) - {"Thing"}
+    base = Knowledge(nouns=nouns)
     for statement in core:
         base.add_statement(statement, f"core line {statement.line}")
     for statement in context:
@@ -330,7 +343,7 @@ def check(
     for statement in output:
         if statement.prefix in ("RULE", "QUERY"):
             continue
-        kb = Knowledge(dict(base.facts), dict(base.prevented), list(base.rules))
+        kb = Knowledge(dict(base.facts), dict(base.prevented), list(base.rules), base.nouns)
         assumed: set[Event] = set()
         if statement.prefix == "HYPO":
             cond = list(statement.condition.events) if statement.condition else []
