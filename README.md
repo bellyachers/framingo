@@ -364,21 +364,47 @@ uv run pytest                             # the spec's own examples are the test
 
 **What has been measured so far.** A model trained only on Framingo, having
 never seen natural language, learns this world's physics and reaches the
-ceiling on held-out splits at around a thousand examples. Where it fails, its
-fabrications are caught by the verifier — but every hole the verifier had was
-found by reading that model's mistakes, so no detection rate is quoted here
-until one is measured against a frozen verifier. Proposition 3 (role-tagged
-versus word-order form) shows no reliable difference in a world this small.
+ceiling on held-out splits at around a thousand examples: it keeps colour
+while dropping shape when a thing is cut, and binds roles for an animate it
+has only ever seen as an agent.
+
+Trained on less, it fails, and the failures are the point. Against a verifier
+frozen before the runs (blob `5725c0f`), six models trained on 250 and 500
+examples with a corpus they had not been tuned against produced **1,507
+fabrications, of which the verifier flagged 1,507, with 0 false alarms over
+17,213 correct or merely incomplete answers.** Read strictly, this says the
+Grounding Constraint is mechanically checkable and the check is not vacuous —
+not that hallucination is solved. This world's minimal core is complete, so
+every fabrication here contradicts something derivable; where the core has
+gaps, a fabrication can be grounded in nothing and still go unflagged. The
+three holes the verifier had before it was frozen were all found by reading a
+model's own output, which is the practice this number depends on.
+
+Proposition 3 (role-tagged versus word-order form) shows no reliable
+difference in a world this small.
 
 **JA** — Python 製で、実行時の依存はない。PyTorch は実験にのみ必要で、`train`
 という任意の依存グループに入れてある。コマンドと構成は上記の通り。
 
 **ここまでに測れたこと。** 自然言語を一度も見ていない、Framingo だけで訓練した
 モデルは、この世界の物理を学習し、千件程度の訓練データで未見の分割でも上限に
-達する。誤るときの捏造は検証器が捕らえる。ただし検証器の穴は、いずれもその
-モデルの誤りを読んで見つけたものであり、独立した測定ではない。検証器を凍結した
-うえで測るまで、検出率の数値はここに書かない。命題3（役割タグ付きフラット形式と
-語順依存形式の比較）については、この程度の小さな世界では有意な差が出ていない。
+達する。切られた物の色は残して形は落とし、訓練で動作主としてしか見ていない
+動物を対象の位置でも正しく束縛する。
+
+訓練を減らせば誤る。そして重要なのはその誤り方である。実行前に凍結した検証器
+（blob `5725c0f`）に対し、250件と500件で訓練した6つのモデルが、調整に使って
+いないコーパス上で**1,507件の捏造を出し、検証器はその1,507件すべてを検出した。
+正しい答えと不足しているだけの答え17,213件に対する誤検出は0件である。**
+
+厳密に読めば、これは「接地制約が機械的に判定可能であり、その判定が空疎では
+ない」ことを示すにとどまる。幻覚が解決したという主張ではない。この世界の最小核
+は完全であり、ゆえにあらゆる捏造が導出可能な何かと矛盾する。核に欠落がある場合、
+何にも接地していない捏造が無印のまま通りうる。凍結前に見つかった三つの穴は、
+いずれもモデル自身の出力を読んで発見したものであり、この数値はその作業に依存
+している。
+
+命題3（役割タグ付きフラット形式と語順依存形式の比較）については、この程度の
+小さな世界では有意な差が出ていない。
 
 ---
 
