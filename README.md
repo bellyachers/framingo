@@ -343,6 +343,45 @@ FrameNet の限界は、それが英語への**注釈**だったことである�
 
 ---
 
+## Implementation / 実装
+
+**EN** — Python, no runtime dependencies. PyTorch is needed only for the
+experiments, in the optional `train` dependency group.
+
+```sh
+uv sync                                   # parser + checker
+uv run framingo parse FILE                # print statements in canonical form
+uv run framingo check OUT --context CTX --core CORE   # apply the Grounding Constraint
+uv run pytest                             # the spec's own examples are the test corpus
+```
+
+| Module | What it is | Status |
+|---|---|---|
+| `parser.py` | Lexer and recursive-descent parser for Gisaburo v1 / Gisaburo v1 の字句解析と再帰下降パーサ | Every Framingo example in `docs/language-spec.md` parses. Where those examples exceed the chapter 4 EBNF, the widening is listed in `SPEC_DEVIATIONS`; that list is the agenda for revising the spec / 仕様の例文はすべて解析できる。EBNF を超える部分は `SPEC_DEVIATIONS` に列挙してあり、それが仕様改訂の議題になる |
+| `grounding.py` | The verifier, v0: token grounding and relation grounding with forward chaining over RULEs / 検証器 v0。語の接地と、RULE の前向き連鎖による関係の接地 | Known gaps are listed in `LIMITS` / 既知の欠落は `LIMITS` に列挙 |
+| `world.py`, `render.py`, `corpus.py` | A deterministic toy world, rendered in Framingo and in a word-order form, with held-out splits / 決定論的な小さな世界と、その二形式での書き出し、評価用の分割 | Generated results are cross-checked by the verifier / 生成した帰結は検証器が独立に照合する |
+| `experiments/train.py` | Trains a ~0.6M-parameter Transformer from scratch and grades it with the verifier / ゼロから約60万パラメータの Transformer を訓練し、検証器で採点する | Reports accuracy, grounding rate, and detection of fabrications / 正答率、接地率、捏造の検出率を報告する |
+
+**What has been measured so far.** A model trained only on Framingo, having
+never seen natural language, learns this world's physics and reaches the
+ceiling on held-out splits at around a thousand examples. Where it fails, its
+fabrications are caught by the verifier — but every hole the verifier had was
+found by reading that model's mistakes, so no detection rate is quoted here
+until one is measured against a frozen verifier. Proposition 3 (role-tagged
+versus word-order form) shows no reliable difference in a world this small.
+
+**JA** — Python 製で、実行時の依存はない。PyTorch は実験にのみ必要で、`train`
+という任意の依存グループに入れてある。コマンドと構成は上記の通り。
+
+**ここまでに測れたこと。** 自然言語を一度も見ていない、Framingo だけで訓練した
+モデルは、この世界の物理を学習し、千件程度の訓練データで未見の分割でも上限に
+達する。誤るときの捏造は検証器が捕らえる。ただし検証器の穴は、いずれもその
+モデルの誤りを読んで見つけたものであり、独立した測定ではない。検証器を凍結した
+うえで測るまで、検出率の数値はここに書かない。命題3（役割タグ付きフラット形式と
+語順依存形式の比較）については、この程度の小さな世界では有意な差が出ていない。
+
+---
+
 ## Documents / 文書
 
 | File | Contents |
@@ -350,6 +389,7 @@ FrameNet の限界は、それが英語への**注釈**だったことである�
 | [`docs/core-thesis.md`](docs/core-thesis.md) | **Design charter (current).** The central claim, architecture, verifier, recursive loop, falsifiable propositions. / **設計憲章（現行）。** 中心命題、アーキテクチャ、検証器、再帰ループ、反証可能な命題 |
 | [`docs/version-names.md`](docs/version-names.md) | **Version codename roster.** Linguists whose theses future specifications could embody, and the rule for assigning them. / **バージョン・コードネーム名簿。** 各世代が体現しうる主張と、その割り当て規則 |
 | [`docs/language-spec.md`](docs/language-spec.md) | **Language specification, Gisaburo v1.** Case frames, concept composition, causal connectives — valid as *means* (charter ch.7). / **言語仕様 Gisaburo v1。** 格フレーム、概念合成、因果結合子。手段として有効（憲章第7章） |
+| [`src/framingo/`](src/framingo) | **Implementation.** Parser, grounding checker, toy world and corpus builder. / **実装。** パーサ、接地チェッカ、小さな世界とコーパス生成 |
 | [`docs/overview.md`](docs/overview.md) | Original draft, kept for the record. Ch. 1 and 5 remain, both superseded by `core-thesis.md`. / 初期草稿（記録として保存）。残る第1・5章は `core-thesis.md` が置き換える |
 
 ---
