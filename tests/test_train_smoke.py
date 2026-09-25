@@ -15,6 +15,8 @@ sys.path.insert(0, str(ROOT / "experiments"))
 
 from train import GPT, _continue, detokenize  # noqa: E402
 
+from framingo import parse  # noqa: E402
+
 from framingo.render import tokens  # noqa: E402
 
 
@@ -120,3 +122,75 @@ def test_batching_prompts_of_different_lengths_changes_nothing():
     together = _continue(model, None, prompts, device, stop, 12)
     apart = [_continue(model, None, [p], device, stop, 12)[0] for p in prompts]
     assert together == apart
+
+
+# -- the grader, fed the right answer ----------------------------------------
+#
+# A grader that scores the gold at less than 1.000 reports the model failing at
+# something the harness is doing. It has happened: the vessels corpus's first
+# stretch is a *question*, and grading it in as though it were a step of the
+# derivation compared a question against a meaning containing none, so every
+# output scored zero however good it was — and the run that said so took
+# twenty minutes of CPU to say it.
+#
+# The check is nearly free and catches the whole class, so it is a test.
+
+
+def _vessel_rows(n=120):
+    from framingo import vessels
+
+    from train import evaluate_stopping  # noqa: PLC0415
+
+    records = vessels.build(n_train=20, n_iid=n, n_unseen=0, seed=0)
+    rows = [r for r in records if r.split == "test_iid"]
+    core = parse(vessels.core_rules())
+    tails = {
+        klass: vessels.TAIL[material]
+        for materials in vessels.CONTAINERS.values()
+        for klass, material in materials.items()
+    }
+    return rows, core, tails, evaluate_stopping
+
+
+def _as_fetched(rows, tail_of=None, head_of=None):
+    out = []
+    for r in rows:
+        head = head_of(r) if head_of else r.head
+        tail = tail_of(r) if tail_of else r.tail
+        out.append({
+            "head": head, "asked_about": [head.split("is:")[1].strip()],
+            "handed": r.handed, "tail": tail, "pred": f"{head} {tail}".strip(),
+            "lied": r.handed, "pred_lied": f"{head} {tail}".strip(),
+        })
+    return out
+
+
+def test_the_grader_scores_the_gold_derivation_perfectly():
+    rows, core, tails, evaluate_stopping = _vessel_rows()
+    got = evaluate_stopping(rows, _as_fetched(rows), "tagged", core, tails)
+    assert got["accuracy"] == 1.0
+    assert got["grounding_rate"] == 1.0
+    assert got["asked_about_the_right_words"] == 1.0
+    assert got["named_what_nobody_supplied"] == 0.0
+
+
+def test_the_grader_catches_a_container_nobody_supplied():
+    """And catches it twice: the answer is wrong and it does not ground."""
+    rows, core, tails, evaluate_stopping = _vessel_rows()
+
+    def invent(r):
+        letter = sorted(set(r.names) - {"'A", "'B"})[0]
+        return r.tail.replace(letter, "'Z")
+
+    got = evaluate_stopping(rows, _as_fetched(rows, tail_of=invent), "tagged", core, tails)
+    assert got["accuracy"] == 0.0
+    assert got["grounding_rate"] == 0.0
+    assert got["named_what_nobody_supplied"] == 1.0
+
+
+def test_the_grader_notices_the_wrong_class_being_asked_about():
+    rows, core, tails, evaluate_stopping = _vessel_rows()
+    fixed = _as_fetched(rows, head_of=lambda r: "-> QUERY: State tgt:? is:Pan")
+    got = evaluate_stopping(rows, fixed, "tagged", core, tails)
+    # a third of the situations really do want a pan, so this is not zero
+    assert 0.2 < got["asked_about_the_right_words"] < 0.45

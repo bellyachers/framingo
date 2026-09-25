@@ -76,6 +76,15 @@ with an example that occurs nowhere in the data. A number that decides something
 is worth computing twice by different means.
 **主要な主張は、自分のものも含めて測り直す。**
 
+**Feed the grader the right answer before feeding it a model's.**
+A grader that scores the gold at less than 1.000 is reporting the model
+failing at something the harness is doing, and it reads exactly like a
+negative result. One corpus's first stretch is a *question*; grading it in as
+a step of the derivation compared a question against a meaning containing
+none, so every output scored zero however good it was. The check costs a
+second and catches the whole class.
+**採点器に gold を食わせて 1.000 が出ることを、モデルを食わせる前に確かめる。**
+
 **Name a metric by imagining it non-zero.**
 `false_alarm_rate` counts benign outputs the verifier flags, and the name
 assumes a correct answer ought to ground — which is the assumption the charter

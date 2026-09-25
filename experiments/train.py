@@ -737,6 +737,13 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
     """
     fin, _ = fields(form)
     n = len(rows)
+    # Where the model's first stretch is a **question** rather than a step of
+    # the derivation, it is not part of what was claimed and must not be graded
+    # as if it were. `QUERY: State tgt:? is:Sack` says nothing about the world;
+    # it asks. Grading the head in would compare a question against a meaning
+    # that contains no question, and every output would be wrong however good
+    # it was. Which stretch is which is what `query` records.
+    asked = bool(rows) and bool(rows[0].query)
     correct = parse_fail = grounded = asked_right = 0
     fabricated = fabricated_flagged = omitted = benign_flagged = 0
     # Only the examples where the model's own stop actually brought something
@@ -759,15 +766,17 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
             if w not in set(_MARK.findall(getattr(r, fin) + " " + r.answer))
         ]
         asked_right += got["asked_about"] == wanted
-        full = f"{getattr(r, fin)} {got['pred']}"
+        claimed = got["tail"] if asked else got["pred"]
+        full = f"{getattr(r, fin)} {claimed}"
         out.append({k: got[k] for k in ("head", "handed", "tail", "pred", "asked_about")})
         supplied = set(_MARK.findall(getattr(r, fin) + " " + r.answer + " " + got["handed"]))
-        invented += bool(set(_MARK.findall(got["pred"])) - supplied)
+        invented += bool(set(_MARK.findall(claimed)) - supplied)
         if got["handed"] and "pred_lied" in got:
             handed_back += 1
+            lied = got["pred_lied"][len(got["head"]):].strip() if asked else got["pred_lied"]
             lied_same += got["pred_lied"] == got["pred"]
             try:
-                lied_correct += same_meaning(f"{getattr(r, fin)} {got['pred_lied']}", r.meaning)
+                lied_correct += same_meaning(f"{getattr(r, fin)} {lied}", r.meaning)
             except (ParseError, ValueError):
                 pass
             # Moving is not the same as understanding. A derivation that broke
