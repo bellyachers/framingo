@@ -122,7 +122,11 @@ choosing one.
 - **A `pgrep` for a script name matches whoever is asking.** A chained job that
   waits with `while pgrep -f "run-x.sh"` waits for ever if any shell watching
   the sweep has that string in its own command line. Two sweeps sat idle for
-  twenty minutes behind a monitoring shell.
+  twenty minutes behind a monitoring shell. The same match then made a running
+  job look finished and a live one look dead.
+- **Look twice, with a gap, before concluding a job has stopped.** One reading
+  of a log tail says where a job was, not that it is still there. A run at
+  epoch 90 was written up as having died; it was at epoch 115.
 - **After killing a sweep, check what survived.** Killing the script and the
   job it had started leaves any child already spawned running, orphaned and
   invisible to the next `pgrep` for the script. It then finishes against
