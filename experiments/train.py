@@ -441,29 +441,48 @@ def generate_stopping(
 
 @torch.no_grad()
 def _continue(model, vocab, prompts: list[list[int]], device, stop: int, max_new: int) -> list[list[int]]:
-    """Greedy decoding up to ``stop``, which is not included in what is returned."""
+    """Greedy decoding up to ``stop``, which is not included in what is returned.
+
+    Prompts of different lengths go in the same batch. A first version grouped
+    by exact length, which is fine while the prompts are a rendered input and
+    an answer, and bad once one of them is **the model's own output so far** —
+    that varies per example, so batches of 128 became hundreds of batches of
+    two, and the evaluation took longer than the training.
+
+    Padding is safe here for the reason a causal model is causal: position t
+    attends to positions up to t and no further, so a pad written after a
+    prompt cannot reach back into it. Each row keeps its own cursor, reads its
+    logits from the token before it, and writes the next token there. Positions
+    stay absolute, so nothing shifts and the result is identical to decoding
+    each row on its own — which is asserted in `tests/test_train_smoke.py`
+    rather than assumed.
+    """
     model.eval()
-    by_len: dict[int, list[int]] = defaultdict(list)
-    for i, p in enumerate(prompts):
-        by_len[len(p)].append(i)
     out: list[list[int]] = [[] for _ in prompts]
-    for _, idx in by_len.items():
-        for s in range(0, len(idx), 128):
-            group = idx[s : s + 128]
-            ids = torch.tensor([prompts[i] for i in group], device=device)
-            done = torch.zeros(len(group), dtype=torch.bool, device=device)
-            for _ in range(max_new):
-                if ids.shape[1] >= model.max_len:
-                    break
-                nxt = model(ids)[:, -1].argmax(-1)
-                nxt = torch.where(done, torch.full_like(nxt, stop), nxt)
-                ids = torch.cat([ids, nxt[:, None]], 1)
-                done |= nxt == stop
-                if done.all():
-                    break
-            for row, i in zip(ids.tolist(), group):
-                gen = row[len(prompts[i]) :]
-                out[i] = gen[: gen.index(stop)] if stop in gen else gen
+    order = sorted(range(len(prompts)), key=lambda i: len(prompts[i]))
+    for s in range(0, len(order), 128):
+        group = order[s : s + 128]
+        cursor = torch.tensor([len(prompts[i]) for i in group], device=device)
+        width = min(int(cursor.max()) + max_new, model.max_len)
+        ids = torch.full((len(group), width), stop, dtype=torch.long, device=device)
+        for row, i in enumerate(group):
+            kept = prompts[i][:width]
+            ids[row, : len(kept)] = torch.tensor(kept, device=device)
+        rows = torch.arange(len(group), device=device)
+        done = cursor >= width
+        for _ in range(max_new):
+            if bool(done.all()):
+                break
+            logits = model(ids)
+            here = cursor.clamp(max=width - 1)
+            nxt = logits[rows, here - 1].argmax(-1)
+            nxt = torch.where(done, torch.full_like(nxt, stop), nxt)
+            ids[rows, here] = nxt
+            cursor = torch.where(done, cursor, cursor + 1)
+            done |= (nxt == stop) | (cursor >= width)
+        for row, i in enumerate(group):
+            gen = ids[row, len(prompts[i]) : int(cursor[row])].tolist()
+            out[i] = gen[: gen.index(stop)] if stop in gen else gen
     return out
 
 

@@ -13,7 +13,7 @@ torch = pytest.importorskip("torch")
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "experiments"))
 
-from train import detokenize  # noqa: E402
+from train import GPT, _continue, detokenize  # noqa: E402
 
 from framingo.render import tokens  # noqa: E402
 
@@ -99,3 +99,24 @@ def test_the_store_s_answer_is_never_a_training_target():
         assert not set(supervised) & set(answer_span), str(r.query)
         # and the model is asked for both of its own stretches
         assert set(supervised) >= set(range(len(stretches[0][0]), answer_at))
+
+
+def test_batching_prompts_of_different_lengths_changes_nothing():
+    """Decoding is batched across unequal prompts, which is only safe because
+    a causal model cannot see past its own position. Asserted rather than
+    assumed: the evaluation of every arm goes through here, and a batching
+    error would move every number at once and look like a result."""
+    import random
+
+    torch.manual_seed(0)
+    model = GPT(40, 32, 2, 2, max_len=64, dropout=0.0)
+    rng = random.Random(0)
+    prompts = [
+        [1] + [rng.randrange(3, 40) for _ in range(rng.randrange(3, 12))]
+        for _ in range(60)
+    ]
+    assert len({len(p) for p in prompts}) > 4, "the lengths have to differ for this to test anything"
+    stop, device = 2, torch.device("cpu")
+    together = _continue(model, None, prompts, device, stop, 12)
+    apart = [_continue(model, None, [p], device, stop, 12)[0] for p in prompts]
+    assert together == apart
