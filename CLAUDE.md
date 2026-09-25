@@ -119,6 +119,10 @@ choosing one.
   imports. Find both ends, assert what is at each, then splice.
 - **Do not edit a shell script while it is running.** zsh reads a script
   incrementally and will resume from the old byte offset into new text.
+- **A `pgrep` for a script name matches whoever is asking.** A chained job that
+  waits with `while pgrep -f "run-x.sh"` waits for ever if any shell watching
+  the sweep has that string in its own command line. Two sweeps sat idle for
+  twenty minutes behind a monitoring shell.
 - **After killing a sweep, check what survived.** Killing the script and the
   job it had started leaves any child already spawned running, orphaned and
   invisible to the next `pgrep` for the script. It then finishes against
