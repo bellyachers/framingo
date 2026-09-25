@@ -109,6 +109,11 @@ choosing one.
   Note also that **0% CPU does not distinguish "hung" from "done"**.
 - **Do not edit a shell script while it is running.** zsh reads a script
   incrementally and will resume from the old byte offset into new text.
+- **After killing a sweep, check what survived.** Killing the script and the
+  job it had started leaves any child already spawned running, orphaned and
+  invisible to the next `pgrep` for the script. It then finishes against
+  whatever the tree says now, and writes its result beside the runs that used
+  the old code.
 - **Give a parallel agent its own `.venv` in its worktree.** `VIRTUAL_ENV`
   points at the main checkout, so `uv run --active` there rewrites the editable
   install and a job running in the main tree starts importing half-finished code.
