@@ -368,20 +368,67 @@ ceiling on held-out splits at around a thousand examples: it keeps colour
 while dropping shape when a thing is cut, and binds roles for an animate it
 has only ever seen as an agent.
 
-Trained on less, it fails, and the failures are the point. Against a verifier
-frozen before the runs (blob `5725c0f`), six models trained on 250 and 500
-examples with a corpus they had not been tuned against produced **1,507
-fabrications, of which the verifier flagged 1,507, with 0 false alarms over
-17,213 correct or merely incomplete answers.** Read strictly, this says the
-Grounding Constraint is mechanically checkable and the check is not vacuous —
-not that hallucination is solved. This world's minimal core is complete, so
-every fabrication here contradicts something derivable; where the core has
-gaps, a fabrication can be grounded in nothing and still go unflagged. The
-three holes the verifier had before it was frozen were all found by reading a
-model's own output, which is the practice this number depends on.
+Trained on less, it fails, and the failures are the point. Six models trained
+on 250 and 500 examples, on a corpus they had not been tuned against, produced
+**1,077 fabrications, of which the verifier flagged 1,077, with 0 false alarms
+over 17,643 correct or merely incomplete answers.** Read strictly, this says
+the Grounding Constraint is mechanically checkable and the check is not vacuous
+— not that hallucination is solved.
+
+That figure is measured on the errors six weak models happened to make, so it
+says nothing about the errors a model happens *not* to make. An adversary
+(`experiments/adversary.py`) mutates the world's own gold meanings instead,
+over 13 classes of wrong recombination — role swaps, substituting an entity
+already present in context, carrying a structural modifier through a division,
+telling a result in the wrong order: **6,500 mutations, 6,500 flagged, with 0
+false alarms over 1,500 deliberate abstractions.** Only 54 of the 6,500 carried
+a word absent from the core, so **string matching alone would have caught under
+one per cent of them**; relation grounding caught the rest. That is the figure
+worth keeping: the non-trivial half of the constraint does nearly all the work.
+
+**Three defects were found while measuring, and none of them could have been
+found by reading model output.** (a) The minimal core was not complete: it
+derived a structural modifier retained through a division, so that whole class
+of fabrication was accepted every time it was tried. (b) The verifier read
+`->` as a list separator, although the specification defines it as temporal and
+mechanical. (c) The language could not say that two results hold at once, so
+the world had to claim that the carried thing's arrival caused the carrier's;
+a joint connective now says it (`&>`, spec ch.4 §1.3), and **that absence, not
+the models, produced every order violation in the saved runs.** Each defect was
+either invisible to the grader or a case where the model was right and the
+system was wrong.
+
+**What an incomplete core would cost has been measured, and it is not what the
+charter assumed.** Removing RULEs from the core (`experiments/ablate_core.py`)
+and re-grading the same saved predictions leaves detection at 100% at every
+level tried — with a tenth of the core gone, with half of it gone, and with no
+core at all — while false alarms rise from 0% of sound output to 8.1%, to
+41.1%, to 100%. A gap here does not hide fabrication, because the check demands
+a positive derivation rather than an absence of contradiction, and what is
+derivable from nothing gets flagged. **The cost of missing coverage is the
+rejection of sound output, not blindness** — the better half of that trade to
+be on. It also means a detection rate quoted on its own is worthless: an empty
+core detects 100% of fabrications while rejecting 100% of everything else, so
+**the claim has to be stated as a pair.** How steep the trade is depends on how
+finely the core is written, not on any law; this core enumerates rules, and a
+core of general class-level rules would lose far more per rule removed.
+
+**Knowledge has been taken out of the weights and put behind a query.** With
+the minimal core **empty**, what a query returns grounds every consequence this
+world produces, 400 out of 400 (`src/framingo/knowledge.py`); with the answer
+withheld, none of them are grounded. Nothing had to be added to the language —
+`QUERY` (spec ch.2 §6.4) already had the right shape, and the checker already
+declined to relation-check a question. What this does not show is a *model*
+doing it: none has yet been trained to ask.
 
 Proposition 3 (role-tagged versus word-order form) shows no reliable
-difference in a world this small.
+difference in a world this small. **Proposition 4 (transfer of invariance) is
+falsified here.** With "a division destroys structural modifiers and conserves
+intrinsic ones" demonstrated under one verb only, a model that scores 1.000 on
+the held-out split when that shape is in its training corpus scores 0.07–0.13
+when it is not — and 0 of 500 on the dividing event itself, while still getting
+the conserving event right 85% of the time. String persistence, which is
+copying, transfers; the classification the conservation law rests on does not.
 
 **JA** — Python 製で、実行時の依存はない。PyTorch は実験にのみ必要で、`train`
 という任意の依存グループに入れてある。コマンドと構成は上記の通り。
@@ -391,20 +438,62 @@ difference in a world this small.
 達する。切られた物の色は残して形は落とし、訓練で動作主としてしか見ていない
 動物を対象の位置でも正しく束縛する。
 
-訓練を減らせば誤る。そして重要なのはその誤り方である。実行前に凍結した検証器
-（blob `5725c0f`）に対し、250件と500件で訓練した6つのモデルが、調整に使って
-いないコーパス上で**1,507件の捏造を出し、検証器はその1,507件すべてを検出した。
-正しい答えと不足しているだけの答え17,213件に対する誤検出は0件である。**
+訓練を減らせば誤る。そして重要なのはその誤り方である。250件と500件で訓練した
+6つのモデルが、調整に使っていないコーパス上で**1,077件の捏造を出し、検証器は
+その1,077件すべてを検出した。正しい答えと不足しているだけの答え17,643件に
+対する誤検出は0件である。** 厳密に読めば、これは「接地制約が機械的に判定可能で
+あり、その判定が空疎ではない」ことを示すにとどまる。幻覚が解決したという主張では
+ない。
 
-厳密に読めば、これは「接地制約が機械的に判定可能であり、その判定が空疎では
-ない」ことを示すにとどまる。幻覚が解決したという主張ではない。この世界の最小核
-は完全であり、ゆえにあらゆる捏造が導出可能な何かと矛盾する。核に欠落がある場合、
-何にも接地していない捏造が無印のまま通りうる。凍結前に見つかった三つの穴は、
-いずれもモデル自身の出力を読んで発見したものであり、この数値はその作業に依存
-している。
+この数値は「6つの弱いモデルがたまたま出した誤り」に対する測定であり、
+**モデルがたまたま出さない誤り**については何も語らない。そこで、世界の gold 意味を
+機械的に変異させる敵対的評価（`experiments/adversary.py`）を用意した。誤結合を
+13クラス —— 役割の交換、文脈に既にある実体への置換、分割を通り抜ける構造的修飾語、
+逆順で語られた結果など —— にわたって試した結果、**6,500件の変異のうち6,500件を
+検出し、意図的な抽象化1,500件に対する誤検出は0件**であった。6,500件のうち核に
+無い語を含んでいたのは54件だけなので、**文字列照合だけで捕まえられたのは1%未満**
+であり、残りは関係接地が捕まえた。**接地制約の非自明な半分が、仕事のほぼ全部を
+している。**
 
-命題3（役割タグ付きフラット形式と語順依存形式の比較）については、この程度の
-小さな世界では有意な差が出ていない。
+**測定の過程で三つの欠陥が見つかり、そのいずれもモデル出力を読む実践では
+発見できなかった。**（a）最小核は完全ではなかった。分割を通り抜けた構造的修飾語を
+導出してしまうため、その一クラスの捏造は試された全件が受理されていた。
+（b）検証器は `->` を列の区切りとして読んでいた。仕様はそれを時間的・力学的な
+ものと定義しているにもかかわらず。（c）言語は「二つの結果が同時に成り立つ」と
+言えず、そのため世界は「運ばれた物の到着が運び手の到着を引き起こした」と主張せざる
+をえなかった。いまは同時結合子がそれを述べる（`&>`、仕様 第4章 §1.3）。そして
+**保存済みの実行で現れた順序違反はすべて、モデルの誤りではなくこの欠落の産物
+だった。** いずれの欠陥も、採点器から見えないか、モデルが正しく体系が誤っている
+場合であった。
+
+**核が不完全であった場合の代償を測った。憲章が想定していたものとは違った。**
+核から RULE を取り除き（`experiments/ablate_core.py`）、同じ保存済み予測を採点し
+直すと、試したどの水準でも検出率は 100% のままである —— 核の一割を落としても、
+半分を落としても、核が空でも。一方で誤検出は健全な出力の 0% から 8.1%、41.1%、
+100% へと上がる。ここでの欠落は捏造を隠さない。検査が要求するのは矛盾の不在では
+なく**積極的な導出**であり、何からも導出できないものには印が付くからである。
+**網羅性の不足が払わせる代償は、見落としではなく健全な出力の却下である** ——
+この取引の、まだ良い側である。同時にこれは、検出率を単独で挙げることが無意味だと
+いうことでもある。空の核は捏造の 100% を検出しつつ、それ以外の 100% を却下する。
+**主張は対で述べなければならない。** 取引の勾配は核をどれだけ細かく書くかで決まり、
+法則ではない。この核は規則を列挙しており、クラス水準の一般規則で書かれた核なら、
+1規則を削る損害はもっと大きい。
+
+**知識を重みから取り出し、問い合わせの先に置いた。** 最小核を**空**にしても、
+問い合わせが返すものでこの世界の帰結は全件接地する（400件中400件、
+`src/framingo/knowledge.py`）。返答を与えなければ一件も接地しない。
+**言語に足したものは何もない** —— `QUERY`（仕様 第2章 §6.4）は既に正しい形をして
+おり、検証器は既に問いを関係照合の対象から外していた。ただしこれは**モデルが
+それを行えること**を示してはいない。そう訓練したモデルはまだ存在しない。
+
+命題3（役割タグ付きフラット形式と語順依存形式の比較）については、この程度の小さな
+世界では有意な差が出ていない。**命題4（不変性の転移）は、この世界では反証された。**
+「分割は構造的修飾語を破壊し内在的修飾語を保存する」を一つの動詞でのみ示した場合、
+その形が訓練コーパスにあれば同じ分割で 1.000 を取るモデルが、なければ 0.07〜0.13
+しか取れない —— 分割する側のイベントだけを見れば500件中0件であり、保存する側の
+イベントは85%正しい。**文字列の永続性、すなわちコピーは転移する。保存則が
+依存している分類は転移しない。**
+
 
 ---
 
@@ -425,9 +514,9 @@ difference in a world this small.
 1. **Coverage of the minimal core** — the boundary need not be exact, but "absent from both core and retrieval" remains a real gap. / 最小核の網羅性——境界の確定は不要になったが、「核にも外部にも無い」は残る
 2. **Design of the translation boundary** — the only place hallucination can enter. / 翻訳境界の設計——幻覚が入りうる唯一の場所
 3. **Can logic be learned without knowledge?** Open, and this project effectively tests it. / 知識なしに論理は学べるか——開いた問い
-4. **Query bootstrapping** — knowing *what to ask for* may itself require knowledge. / クエリ発行のブートストラップ
+4. **Query bootstrapping** — knowing *what to ask for* may itself require knowledge. In a formal language the shape of the question is the shape of the action, so a query can be formed structurally; whether a model can be trained to always form one is untested. / クエリ発行のブートストラップ——形式言語では問いの形が行為の形なので構文的に組めるが、常に組むようモデルを訓練できるかは未検証
 5. **No dialogue layer yet** — no speaker/hearer, no speech acts, no cross-turn anaphora. / 対話層が存在しない
-6. **The verifier is unimplemented** — and every claim above depends on it. / 検証器が未実装——上記のすべてがこれに依存している
+6. **The verifier is only as right as the core it reads** — every number above depends on it, and three of its defects have already been found by measuring rather than by reading output. / 検証器は、それが読む核が正しい限りでしか正しくない——上記のすべてがこれに依存しており、既に三つの欠陥が、出力を読むのではなく測ることによって見つかっている
 
 ---
 

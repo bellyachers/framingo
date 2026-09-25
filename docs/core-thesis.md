@@ -643,8 +643,10 @@ A model that externalizes knowledge and learns logic alone achieves equivalent l
 → *Falsified if: logical ability depends strongly on the amount of knowledge, and formal reasoning does not hold up in small models.*
 
 **Proposition 2 (detection by the Grounding Constraint)**
-For the output of a model trained under the Grounding Constraint, the hallucination detection rate reaches a practical level (e.g. 99% or above).
-→ *Falsified if: the model frequently generates output that evades the Grounding Constraint (wrong recombinations of existing tokens, etc.).*
+For the output of a model trained under the Grounding Constraint, the hallucination detection rate reaches a practical level (e.g. 99% or above) **while the false-alarm rate on sound output stays near zero.**
+→ *Falsified if: the model frequently generates output that evades the Grounding Constraint (wrong recombinations of existing tokens, etc.), **or the detection rate is reached only by rejecting sound output as well.***
+
+> **Revised 2026-09-25.** The proposition was one-sided as first written, and a measurement showed that the missing half is not a formality: ablating the minimal core leaves the detection rate at 100% at every level of coverage tried, **including an empty core, which flags everything and so "detects" every fabrication while rejecting every sound answer.** A detection rate quoted on its own is therefore satisfied by a checker that refuses all output, and the claim has to be stated as a pair.
 
 **Proposition 3 (learning efficiency through form)**
 Holding semantic content fixed and varying only the surface form, a role-tagged flat form shows higher compositional generalization than a word-order-dependent form.
@@ -653,7 +655,13 @@ Holding semantic content fixed and varying only the surface form, a role-tagged 
 
 **Proposition 4 (transfer of invariance)**
 A model trained on conservation laws explicitly encoded as string persistence generalizes to other kinds of invariants that were not so encoded.
-→ *Falsified if: it does not generalize. In that case the model has learned "copying", not "invariance", and a central assumption of the project is falsified.*
+→ *Falsified if: it does not generalize. In that case the model has learned "copying", not "invariance".*
+
+> **Falsified 2026-09-25, and the scope of that has been corrected.** With the law demonstrated under one verb only, a model that reaches 1.000 on the held-out split when the shape is present in its training corpus reaches 0.07–0.13 when it is not, and 0 of 500 on the dividing event itself while still getting the conserving event right 85% of the time. String persistence — copying — transfers; the classification the conservation law rests on does not.
+>
+> The original wording added "and a central assumption of the project is falsified". **That clause has been removed.** Appendix A item 6 already recorded that propositions 3 and 4 were formulated by this document rather than drawn from the concept, and the originator has since confirmed that proposition 4 was not part of it. A hypothesis this document proposed has been tested and did not hold; the project's central thesis, which is chapters 1–2, is untouched by that.
+>
+> What the result does bear on is chapter 9 problem (3). The corpus never states that the two divisions are the same kind of operation — that is a taxonomic fact, which is to say **knowledge**, and this architecture supplies knowledge from outside rather than expecting weights to infer it. The experiment as run therefore asked the model to do the thing the architecture says it should not have to.
 
 **Proposition 5 (dialogue)**
 A small model that has never seen natural language and a human hold a multi-turn conversation about a shared context, in Framingo alone.
@@ -666,8 +674,10 @@ A small model that has never seen natural language and a human hold a multi-turn
 → *反証条件：論理能力が知識量に強く依存し、小規模モデルでは形式的推論が成立しない場合。*
 
 **命題2（接地制約による検出）**
-接地制約下で訓練されたモデルの出力に対し、幻覚の検出率が実用水準（例：99%以上）に達する。
-→ *反証条件：モデルが接地制約を回避する出力（既存トークンの誤った組み替え等）を高頻度で生成する場合。*
+接地制約下で訓練されたモデルの出力に対し、幻覚の検出率が実用水準（例：99%以上）に達し、**かつ健全な出力に対する誤検出率がゼロ近傍にとどまる。**
+→ *反証条件：モデルが接地制約を回避する出力（既存トークンの誤った組み替え等）を高頻度で生成する場合、**あるいは検出率が健全な出力もろとも却下することによってしか達成されない場合。***
+
+> **2026-09-25 改訂。** 当初の記述は片肺であり、欠けていた半分が形式的なものでないことが測定で判明した。最小核を削っても、試したどの被覆水準でも検出率は100%のままである。**核が空の場合を含む。空の核はすべてに印を付けるので、あらゆる捏造を「検出」しつつ、あらゆる健全な答えを却下する。** したがって検出率を単独で挙げることは「すべてを却下する検証器」でも満たせる主張であり、この命題は対で述べなければならない。
 
 **命題3（形式による学習効率）**
 意味内容を固定したまま表層形式のみを変えたとき、役割タグ付きフラット形式は語順依存形式より高い組成的汎化を示す。
@@ -676,7 +686,13 @@ A small model that has never seen natural language and a human hold a multi-turn
 
 **命題4（不変性の転移）**
 文字列永続性として明示的にエンコードした保存則で訓練したモデルは、エンコードしなかった別種の不変量にも汎化する。
-→ *反証条件：汎化しない場合。この場合、モデルは「不変性」ではなく「コピー」を学習しており、企画の中心的仮定が反証される。*
+→ *反証条件：汎化しない場合。この場合、モデルは「不変性」ではなく「コピー」を学習している。*
+
+> **2026-09-25 に反証。その射程も訂正した。** 法則を一つの動詞でのみ示した場合、その形が訓練コーパスにあれば未見の分割で 1.000 を取るモデルが、なければ 0.07〜0.13 しか取れない。分割する側のイベントだけを見れば500件中0件であり、保存する側のイベントは85%正しい。**文字列の永続性、すなわちコピーは転移する。保存則が依存している分類は転移しない。**
+>
+> 当初の記述は「企画の中心的仮定が反証される」と続けていた。**この節は削除した。** 付録A 第6項が既に「命題3・命題4 は本文書が定式化したものであり、構想に含まれていない可能性がある」と記録しており、その後、構想側から命題4 は構想に含まれていなかったことが確認された。本文書が提案した仮説が検証され成立しなかったのであって、企画の中心命題（第1〜2章）はそれによって何ら傷つかない。
+>
+> この結果が実際に関わるのは第9章(3)である。コーパスは二つの分割が同種の操作であることを一度も述べていない。それは分類学的事実、すなわち**知識**であり、本アーキテクチャは知識を外から供給するものであって、重みに推論させるものではない。**実行された実験は、アーキテクチャが「やらなくてよい」と言っていることをモデルに要求していた。**
 
 **命題5（対話成立）**
 自然言語を一度も見ていない小規模モデルと人間が、共有された文脈について、Framingoのみで多ターンの対話を成立させる。
@@ -1043,7 +1059,7 @@ As a result:
 3. **The three-layer architecture diagram (section 3.1)** — Carving out the "Translation Boundary" as an independent layer is this document's own arrangement.
 4. **Dissolving the boundary problem by redundancy (section 4.3)** — "The boundary need not be exact / ambiguous items go in both the core and the exterior / just-to-be-sure queries are permitted" is **guidance given by the originator of the concept**, which this document formalized. However, the side consequence "dependence on calibration disappears" (4.3(e)) and the criterion for internalization (4.3(d)) are extrapolations by this document.
 5. **Using a deterministic engine as the verifier (section 5.3)** — A proposal by this document, derived from the example of AlphaGo.
-6. **Propositions 3 and 4 (chapter 8)** — Formulated by this document in the course of analysing the old draft; they may not have been part of the original concept.
+6. **Propositions 3 and 4 (chapter 8)** — Formulated by this document in the course of analysing the old draft; they may not have been part of the original concept. **Confirmed 2026-09-25: proposition 4 was not part of it.** Chapter 8 has been amended accordingly.
 7. **Where the industrial value lies** — The judgment that "detectability of hallucination and auditability of reasoning are valuable in finance, medicine, law and control" is this document's. Whether the concept was motivated by this is unconfirmed.
 8. **All of chapter 11 (the recursive improvement loop)** — Makes concrete, on this architecture, the mechanism for the destination set out by the originator of the concept (an intelligence that has been created gives rise to the next). In particular **11.3 (linguistic self-extension)**, **11.4 (defining the gradient)** and **11.5 (the two-signal requirement)** are proposals by this document and require examination.
 
@@ -1054,7 +1070,7 @@ As a result:
 3. **三層アーキテクチャ図（3.1節）** —— 「翻訳境界」を独立した層として切り出したのは本文書の構成である。
 4. **冗長性による境界問題の解消（4.3節）** —— 「境界は厳密でなくてよい／曖昧な項目は核と外部の両方に置く／念のための問い合わせを許容する」は**構想側から与えられた指針**であり、本文書はそれを定式化した。ただし「較正への依存が消える」という副次的帰結（4.3(e)）と、内在化の判断基準（4.3(d)）は本文書による外挿である。
 5. **決定論的エンジンを検証器とする構成（5.3節）** —— AlphaGoの例から導いた本文書の提案。
-6. **命題3・命題4（第8章）** —— 旧文書の分析過程で本文書が定式化したもので、元の構想に含まれていない可能性がある。
+6. **命題3・命題4（第8章）** —— 旧文書の分析過程で本文書が定式化したもので、元の構想に含まれていない可能性がある。**2026-09-25 に確認：命題4 は構想に含まれていなかった。** 第8章をそれに従って改訂した。
 7. **産業的価値の所在** —— 「幻覚の検出可能性と推論の監査可能性が金融・医療・法務・制御で価値を持つ」という判断は本文書による。構想の動機がそこにあるかは未確認。
 8. **第11章（再帰的改良のループ）全体** —— 構想側から示された到達目標（創出された知能が次の知能を生む）に対し、その機構を本アーキテクチャ上で具体化したもの。特に **11.3（言語的自己拡張）**、**11.4（勾配の定義）**、**11.5（二信号の要請）** は本文書による提案であり、検討を要する。
 
