@@ -346,6 +346,68 @@ def _instantiate(event: Event, binding: dict[Concept, Concept]) -> Event:
     return Event(event.verb, slots, event.label)
 
 
+# How many ways one rule may be supplied with individuals before the expansion
+# is given up on. A rule that needs a vessel and is offered sixty-four of them
+# is not being tested for anything the sixty-fifth would settle.
+SUPPLY_LIMIT = 64
+
+
+def _wanted(concept: object) -> tuple[str, ...] | None:
+    """The class a consequent asks to be given an individual of, if it does.
+
+    `Any.` is the determiner the spec defines as "one chosen arbitrarily from
+    the set" (ch.3 §4.1). In a premise that is just a class pattern and the
+    determiner is ignored, as it is everywhere else. In a **consequent** it is
+    the one place the language says *an individual is needed here and the rule
+    does not know which* — which is exactly what a model has to notice before
+    it can ask for one. Nothing was added to say it; the word was already there.
+    """
+    if not isinstance(concept, Concept) or concept.determiner != "Any":
+        return None
+    segments = concept.segments
+    return segments[:-1] if segments and segments[-1] == "Thing" else None
+
+
+def _supply(
+    event: Event, classes: dict[str, frozenset[str]]
+) -> list[Event]:
+    """The same conclusion, once per individual that could fill its gaps.
+
+    An `Any.Vessel.Thing` left standing in a conclusion licenses nothing by
+    itself; what it licenses is the conclusion about **some vessel that is
+    known**. So the gap is filled from what the model was actually handed, and
+    from nothing else.
+
+    That is where the guarantee lives. A model that cannot find a vessel and
+    invents one is not refuted by a rule — the rule is happy, it only ever
+    asked for *a* vessel. It is refuted because the vessel it named was handed
+    over by nobody, so no fact of this shape was ever licensed. **Fabrication
+    fails here for want of a source, which is the only reason that holds.**
+    """
+    gaps = [(k, want) for k, v in event.slots if (want := _wanted(v)) is not None]
+    if not gaps:
+        return [event]
+    out = [event]
+    for key, want in gaps:
+        members = sorted(w for w, of in classes.items() if set(want) <= of | {w})
+        if not members:
+            return []
+        grown = []
+        for partial in out:
+            for name in members:
+                slots = frozenset(
+                    (k, Concept((name,)) if k == key and _wanted(v) == want else v)
+                    for k, v in partial.slots
+                )
+                grown.append(Event(partial.verb, slots, partial.label))
+                if len(grown) >= SUPPLY_LIMIT:
+                    break
+            if len(grown) >= SUPPLY_LIMIT:
+                break
+        out = grown
+    return out
+
+
 def supports(fact: Event, claim: Event, nouns: frozenset[str] = frozenset()) -> bool:
     if fact.verb != claim.verb:
         return False
@@ -549,16 +611,31 @@ class Knowledge:
             binding: dict[Concept, Concept] = {}
             if all(_event_matches(p, f, binding, self.classes) for p, f in zip(premises, chosen)):
                 label = f"derived by {source}"
-                derived = []
-                for connector, conclusion in conclusions:
+                # Every conclusion is supplied before any is recorded. A rule
+                # whose later step asks for an individual nothing known belongs
+                # to has not half fired — it has not fired, and leaving its
+                # first step behind would ground a chain the world cannot
+                # finish.
+                filled = [
+                    _supply(_bare(_instantiate(conclusion, binding)), self.classes)
+                    for _, conclusion in conclusions
+                ]
+                if not all(filled):
+                    continue
+                for (connector, _), ways in zip(conclusions, filled):
                     table = self.prevented if connector == "!>" else self.facts
-                    derived.append(_bare(_instantiate(conclusion, binding)))
-                    table.setdefault(derived[-1], label)
+                    for one in ways:
+                        table.setdefault(one, label)
                 # The rule's own action — its last premise, the fact that fired
                 # it — heads the chain it licenses: the conclusions follow the
                 # cause, not the `when:` state that merely held (spec ch.4 §2).
-                self.sequence(chosen[-1:] + tuple(derived),
-                              tuple(c for c, _ in conclusions))
+                # One chain per way of supplying it, because an order recorded
+                # for one vessel says nothing about another.
+                for n, derived in enumerate(product(*filled)):
+                    if n >= SUPPLY_LIMIT:
+                        break
+                    self.sequence(chosen[-1:] + derived,
+                                  tuple(c for c, _ in conclusions))
 
 
 # -- report ------------------------------------------------------------------

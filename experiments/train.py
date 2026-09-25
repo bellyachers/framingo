@@ -53,7 +53,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from framingo import ParseError, parse, parse_one
-from framingo import basics, instantiation
+from framingo import basics, instantiation, scaled
 from framingo.corpus import build
 from framingo.knowledge import Store
 from framingo.grounding import check, entails
@@ -309,15 +309,43 @@ def generate_asking(model, vocab, rows, store, device, form: str, max_new: int =
     return out
 
 
+def _lie_about(handed: str, classes: tuple[str, ...], rng) -> str:
+    """The same handover, with every class replaced by one it is not.
+
+    `_scrambled` does this to what the parser hands over before the model has
+    written anything. This does it to what comes back *mid-derivation*, in
+    answer to the model's own stop, and it is the only control that can say
+    whether that second lookup is load-bearing: a model that reads the answer
+    follows the lie and gets the wrong tail, a model that had already decided
+    the tail from the input is untouched.
+    """
+    out = []
+    for line in handed.split("FACT: "):
+        if not line.strip():
+            continue
+        word, klass = line.split("tgt:")[1].split(" is:")
+        wrong = [c for c in classes if c != klass.strip()]
+        out.append(f"FACT: State tgt:{word} is:{rng.choice(wrong) if wrong else klass.strip()}")
+    return " ".join(out)
+
+
 @torch.no_grad()
-def generate_stopping(model, vocab, rows, device, form: str, entries, max_new: int = 48):
+def generate_stopping(
+    model, vocab, rows, device, form: str, entries, max_new: int = 48,
+    lie_with: tuple[str, ...] = (), seed: int = 0,
+):
     """Let the model derive, look up what it derived, and let it finish.
 
     The harness resolves whatever marked words the model's own output brings in
     — not the ones the gold brings in. A model that derives the wrong thing is
     told about the wrong thing and has to live with it, which is the failure
     worth being able to see.
+
+    With ``lie_with``, the same head is finished twice: once from the true
+    answer and once from a false one. The head is generated only the once, so
+    the two tails differ in nothing but what came back.
     """
+    lying = random.Random(f"{seed}-mid-lie")
     fin, _ = fields(form)
     ask, got, eos = vocab.stoi[ASK], vocab.stoi[GOT], vocab.stoi[EOS]
     prompts = [
@@ -344,18 +372,31 @@ def generate_stopping(model, vocab, rows, device, form: str, entries, max_new: i
             if "tgt:'" in line:
                 local["'" + line.split("tgt:'")[1].split()[0]] = "FACT: " + line.strip()
         handed = " ".join(local[w] for w in fresh if w in local)
+        lied = _lie_about(handed, lie_with, lying) if lie_with else ""
+
+        def resume(answer: str) -> list[int]:
+            return prompt + written + [ask] + (vocab.encode(answer) if answer else []) + [got]
+
         out.append(
             {
                 "head": head,
                 "asked_about": fresh,
                 "handed": handed,
-                "prompt": prompt + written + [ask] + (vocab.encode(handed) if handed else []) + [got],
+                "lied": lied,
+                "prompt": resume(handed),
+                "prompt_lied": resume(lied),
             }
         )
     for o, written in zip(out, _continue(model, vocab, [o["prompt"] for o in out], device, eos, max_new)):
         o["tail"] = detokenize(vocab.decode(written))
         o["pred"] = (o["head"] + " " + o["tail"]).strip()
         del o["prompt"]
+    if lie_with:
+        finished = _continue(model, vocab, [o["prompt_lied"] for o in out], device, eos, max_new)
+        for o, written in zip(out, finished):
+            o["pred_lied"] = (o["head"] + " " + detokenize(vocab.decode(written))).strip()
+    for o in out:
+        del o["prompt_lied"]
     return out
 
 
@@ -572,7 +613,7 @@ def evaluate_asking(rows, fetched: list[dict], form: str) -> dict:
     }
 
 
-def _scrambled(model, vocab, rows, device, form: str, seed: int) -> float:
+def _scrambled(model, vocab, rows, device, form: str, seed: int, classes=None) -> float:
     """Accuracy when the dictionary is made to lie about every marked word.
 
     The control this corpus cannot do without. A name the model has been
@@ -584,7 +625,7 @@ def _scrambled(model, vocab, rows, device, form: str, seed: int) -> float:
     the lookup.
     """
     rng = random.Random(f"{seed}-scramble")
-    classes = sorted(basics.NAMES)
+    classes = sorted(classes if classes is not None else basics.NAMES)
     prompts = []
     for r in rows:
         lied = []
@@ -630,6 +671,11 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
     n = len(rows)
     correct = parse_fail = grounded = asked_right = 0
     fabricated = fabricated_flagged = omitted = benign_flagged = 0
+    # Only the examples where the model's own stop actually brought something
+    # back can say anything about whether the answer was used. Scoring the lie
+    # over all of them would dilute it with examples that had nothing to lie
+    # about, and a number diluted that way looks like robustness.
+    handed_back = lied_correct = lied_same = 0
     examples, out = [], []
     for r, got in zip(rows, fetched):
         wanted = [w for w in dict.fromkeys(_MARK.findall(r.head)) if w not in
@@ -637,6 +683,13 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
         asked_right += got["asked_about"] == wanted
         full = f"{getattr(r, fin)} {got['pred']}"
         out.append({k: got[k] for k in ("head", "handed", "tail", "pred", "asked_about")})
+        if got["handed"] and "pred_lied" in got:
+            handed_back += 1
+            lied_same += got["pred_lied"] == got["pred"]
+            try:
+                lied_correct += same_meaning(f"{getattr(r, fin)} {got['pred_lied']}", r.meaning)
+            except (ParseError, ValueError):
+                pass
         try:
             ok = same_meaning(full, r.meaning)
             stmt = parse_one("FACT: " + full)
@@ -680,6 +733,13 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
         "omitted": omitted,
         "detection_rate": (fabricated_flagged / fabricated) if fabricated else None,
         "false_alarm_rate": (benign_flagged / benign) if benign else None,
+        # How many of those stops brought an answer back, and what became of
+        # the derivation when that answer was false. `unmoved_by_the_lie` is
+        # the share that came out character for character the same as with
+        # the truth — a derivation that never read what it had asked for.
+        "handed_back": handed_back,
+        "accuracy_when_handed_lies": (lied_correct / handed_back) if handed_back else None,
+        "unmoved_by_the_lie": (lied_same / handed_back) if handed_back else None,
         "examples": examples,
         "predictions": out,
     }
@@ -761,9 +821,18 @@ def main() -> None:
     # it; the new arms, having nothing to reproduce, can afford to cut it.
     ap.add_argument("--max-draws", type=int, default=2_000_000)
     ap.add_argument("--n-invariant", type=int, default=500)
-    ap.add_argument("--corpus", choices=("world", "instantiation", "basics"), default="world",
-                    help="`instantiation` has no physics in it: only applying the rule that comes back")
+    ap.add_argument("--corpus", choices=("world", "instantiation", "basics", "scaled"), default="world",
+                    help="`instantiation` has no physics in it: only applying the rule that comes back; "
+                         "`scaled` is the same world as `basics` at whatever size --classes asks for")
     ap.add_argument("--rules", type=int, default=150, help="instantiation: rules to train on")
+    ap.add_argument("--classes", type=int, default=10, help="scaled: how many classes the world has")
+    ap.add_argument("--verbs", type=int, default=4, help="scaled: how many verbs the world has")
+    ap.add_argument("--names-per-class", type=int, default=10)
+    ap.add_argument("--marked", type=float, default=0.25,
+                    help="scaled: share of outcome words carrying the mark; 1.0 makes every "
+                         "example exercise the mid-derivation lookup")
+    ap.add_argument("--leak", type=float, default=0.0,
+                    help="scaled: how often a thing wears the modifier that goes with its class")
     ap.add_argument("--ask", action="store_true",
                     help="the model fetches its own knowledge and the core is graded empty")
     ap.add_argument("--max-len", type=int, default=0, help="0 = 96, or 320 when asking")
@@ -775,18 +844,48 @@ def main() -> None:
     ap.add_argument("--dropout", type=float, default=0.1)
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--out", default="runs")
+    # Two runs on one GPU contend, and a sweep that is already going is worth
+    # more than the speed of the run being added to it.
+    ap.add_argument("--device", choices=("auto", "cpu", "mps"), default="auto")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
     rng = random.Random(args.seed)
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device(
+        args.device if args.device != "auto"
+        else ("mps" if torch.backends.mps.is_available() else "cpu")
+    )
 
     entries: dict[str, str] = {}
-    if args.corpus == "basics":
-        records = basics.build(n_train=args.train, seed=args.data_seed)
+    # `basics` is one world written out by hand; `scaled` is the same shape
+    # generated at a size. Everything downstream reads them through these three
+    # — the dictionary the parser hands over, the core the grading checks
+    # against, and the states a mid-derivation lie may draw on — so the two
+    # corpora differ nowhere else.
+    core_text = basics.core_rules
+    lie_with: tuple[str, ...] = ()
+    name_classes: list[str] = []
+    if args.corpus in ("basics", "scaled"):
+        if args.corpus == "scaled":
+            world = scaled.make(
+                n_classes=args.classes, n_verbs=args.verbs,
+                names_per_class=args.names_per_class, seed=args.data_seed,
+                leak=args.leak, marked=args.marked,
+            )
+            records = scaled.build(world, n_train=args.train, seed=args.data_seed)
+            dictionary, states = scaled.dictionary(world), world.outcome_class.values()
+            core_text = lambda: scaled.core_rules(world)  # noqa: E731
+        else:
+            records = basics.build(n_train=args.train, seed=args.data_seed)
+            dictionary, states = basics.dictionary(), basics.OUTCOME_CLASS.values()
         store = None
-        for line in basics.dictionary().splitlines():
+        for line in dictionary.splitlines():
             entries[line.split("tgt:")[1].split()[0]] = line
+        # The lie is drawn from the states an outcome can really be in, so that
+        # nothing but the lookup can tell it from the truth. A lie with a class
+        # no outcome ever has would be detectable without reading it.
+        lie_with = tuple(sorted(set(states)))
+        name_classes = sorted(world.names if args.corpus == "scaled" else basics.NAMES)
     elif args.corpus == "instantiation":
         assert args.ask, "the instantiation corpus is only meaningful with --ask"
         records = instantiation.build(
@@ -815,7 +914,7 @@ def main() -> None:
     # not read an answer even in principle. They are still never a training
     # target (`parts`), so this widens what can be read, not what is learnt.
     texts = [getattr(r, f) for r in splits["train"] for f in (fin, fout)]
-    if args.corpus == "basics":
+    if args.corpus in ("basics", "scaled"):
         # Every split's handed-over lines, so a held-out name can at least be
         # tokenised. Its embedding stays untrained, which is the honest
         # condition for a word a model has never met.
@@ -838,7 +937,7 @@ def main() -> None:
                     missing = [t for t in tokens(getattr(r, f)) if t not in vocab.stoi]
                     assert not missing, f"{name} uses tokens unseen in training: {missing}"
 
-    handed = args.corpus == "basics"
+    handed = args.corpus in ("basics", "scaled")
     max_len = args.max_len or (320 if args.ask else (192 if handed else 96))
     model = GPT(len(vocab.itos), args.d, args.layers, args.heads, max_len=max_len, dropout=args.dropout).to(device)
     params = sum(p.numel() for p in model.parameters())
@@ -868,19 +967,22 @@ def main() -> None:
     for name in held:
         rows = splits[name]
         if args.ask and handed:
-            fetched = generate_stopping(model, vocab, rows, device, args.form, entries)
-            results[name] = evaluate_stopping(rows, fetched, args.form, parse(basics.core_rules()))
+            fetched = generate_stopping(
+                model, vocab, rows, device, args.form, entries,
+                lie_with=lie_with, seed=args.seed,
+            )
+            results[name] = evaluate_stopping(rows, fetched, args.form, parse(core_text()))
         elif args.ask:
             fetched = generate_asking(model, vocab, rows, store, device, args.form, seed=args.seed)
             results[name] = evaluate_asking(rows, fetched, args.form)
         else:
             prompts = [parts(r, vocab, args.form, False, handed)[0][0] for r in rows]
             preds = [detokenize(p) for p in generate(model, vocab, prompts, device)]
-            core = parse(basics.core_rules()) if handed else None
+            core = parse(core_text()) if handed else None
             results[name] = evaluate(rows, preds, args.form, core)
             if handed:
                 results[name]["accuracy_scrambled"] = _scrambled(
-                    model, vocab, rows, device, args.form, args.seed
+                    model, vocab, rows, device, args.form, args.seed, name_classes
                 )
         line = {k: v for k, v in results[name].items() if k not in ("examples", "predictions")}
         print(name, json.dumps(line), flush=True)
@@ -888,6 +990,9 @@ def main() -> None:
     arm = "" if args.invariant == "off" else f"-{args.invariant}"
     asking = "-ask" if args.ask else ""
     which = "" if args.corpus == "world" else f"-{args.corpus}"
+    if args.corpus == "scaled":
+        which += f"-c{args.classes}v{args.verbs}"
+        which += f"-leak{args.leak:g}" if args.leak else ""
     out = Path(args.out) / f"{args.form}{which}{asking}{arm}-seed{args.seed}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2, ensure_ascii=False))

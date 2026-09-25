@@ -354,3 +354,56 @@ def test_the_same_output_is_grounded_only_when_the_class_was_looked_up():
     unasked = parse("FACT: Feed tgt:Mary")
     assert check(output, asked, CLASSES).ok
     assert not check(output, unasked, CLASSES).ok
+
+
+# -- `Any.` in a consequent: the rule says an individual is needed and does not
+#    say which. What fills it is what was handed over, and nothing else.
+
+NEEDS_A_VESSEL = parse(
+    """
+    RULE: Action: Carry agt:Every.Animate.Thing tgt:Every.Liquid.Thing
+          -> Result: In tgt:It loc:Any.Vessel.Thing
+    """
+)
+CARRYING = "FACT: Action: Carry agt:Ann tgt:Brine"
+KINDS = """
+    FACT: State tgt:Ann is:Animate
+    FACT: State tgt:Brine is:Liquid
+"""
+
+
+def test_any_in_a_consequent_is_filled_from_what_was_handed_over():
+    context = parse(CARRYING + KINDS + "\nFACT: State tgt:Jar is:Vessel")
+    report = check(parse("FACT: Action: In tgt:Brine loc:Jar"), context, NEEDS_A_VESSEL)
+    assert report.ok
+
+
+def test_a_vessel_nobody_handed_over_cannot_fill_it():
+    """The whole guarantee. The rule only ever asked for *a* vessel, so it is
+    not the rule that refuses an invented one — it is that no fact of this
+    shape was ever licensed, for want of anything to license it with."""
+    context = parse(CARRYING + KINDS + "\nFACT: State tgt:Jar is:Vessel")
+    report = check(parse("FACT: Action: In tgt:Brine loc:Urn"), context, NEEDS_A_VESSEL)
+    assert not report.ok
+
+
+def test_a_thing_of_the_wrong_class_cannot_fill_it():
+    context = parse(CARRYING + KINDS + "\nFACT: State tgt:Knife is:Blade")
+    report = check(parse("FACT: Action: In tgt:Brine loc:Knife"), context, NEEDS_A_VESSEL)
+    assert not report.ok
+
+
+def test_with_no_vessel_known_the_rule_licenses_nothing():
+    context = parse(CARRYING + KINDS)
+    report = check(parse("FACT: Action: In tgt:Brine loc:Jar"), context, NEEDS_A_VESSEL)
+    assert not report.ok
+
+
+def test_any_of_several_vessels_may_fill_it():
+    context = parse(
+        CARRYING + KINDS + "\nFACT: State tgt:Jar is:Vessel\nFACT: State tgt:Urn is:Vessel"
+    )
+    for vessel in ("Jar", "Urn"):
+        assert check(
+            parse(f"FACT: Action: In tgt:Brine loc:{vessel}"), context, NEEDS_A_VESSEL
+        ).ok

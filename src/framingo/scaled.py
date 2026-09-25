@@ -68,6 +68,7 @@ def make(
     n_states: int = 4,
     seed: int = 0,
     leak: float = 0.0,
+    marked: float = 0.25,
 ) -> World:
     """A world of the given size.
 
@@ -89,9 +90,14 @@ def make(
     modifiers = tuple(f"Md{i:03}" for i in range(max(8, n_classes)))
     verbs = tuple(f"Vb{i:02}" for i in range(n_verbs))
 
-    # Each verb takes some classes and leaves its own outcome on each. A quarter
-    # of the outcomes carry the mark, so that a derivation keeps bringing in
-    # words the model does not hold and has to stop for.
+    # Each verb takes some classes and leaves its own outcome on each. Some
+    # share of the outcomes carries the mark, so that a derivation keeps
+    # bringing in words the model does not hold and has to stop for. The share
+    # is a dial because it sets how many examples exercise the mid-derivation
+    # lookup at all: at the natural 0.25 only about one in nine does, once a
+    # tail is needed too, and a control scored over the other eight says
+    # nothing. Turn it to 1 to measure the lookup; leave it low to keep the
+    # mixture a vocabulary really has.
     words = iter(range(10_000))
     outcomes: dict[str, dict[str, str]] = {}
     takes: dict[str, tuple[str, ...]] = {}
@@ -101,7 +107,7 @@ def make(
         table = {}
         for klass in taken:
             word = f"Ou{next(words):04}"
-            table[klass] = f"'{word}" if rng.random() < 0.25 else word
+            table[klass] = f"'{word}" if rng.random() < marked else word
         outcomes[verb] = table
 
     states = tuple(f"St{i:02}" for i in range(n_states))
@@ -111,7 +117,12 @@ def make(
     steps = tuple(f"Vc{i:02}" for i in range(n_states * 2))
     tail: dict[str, tuple[str, ...]] = {}
     for i, state in enumerate(states):
-        length = i % 3  # 0, 1 or 2 further events
+        # One or two further events, never none. A state whose tail is empty
+        # cannot test whether the model read what it was told that state was:
+        # there is nothing left to write either way. The hand-written world has
+        # the same property, and keeping it here is what makes the two
+        # comparable rather than a kindness to the model.
+        length = 1 + i % 2
         tail[state] = tuple(steps[i * 2 : i * 2 + length])
     # one modifier per class, for the leak
     signature = {k: modifiers[i % len(modifiers)] for i, k in enumerate(classes)}
