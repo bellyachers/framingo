@@ -113,6 +113,10 @@ choosing one.
   buffered, so a running job and a finished one look the same, and a traceback
   is swallowed. Write the whole log to a file and filter when reading it.
   Note also that **0% CPU does not distinguish "hung" from "done"**.
+- **Replace code between two boundaries you have asserted, never between two
+  searched-for markers.** Cutting from a function's `def` to the next section
+  comment has twice removed every function in between, and the file still
+  imports. Find both ends, assert what is at each, then splice.
 - **Do not edit a shell script while it is running.** zsh reads a script
   incrementally and will resume from the old byte offset into new text.
 - **After killing a sweep, check what survived.** Killing the script and the
