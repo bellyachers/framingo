@@ -127,7 +127,7 @@ This is the same kind of invention as a **type system**. A type system does not 
 
 ---
 
-## Two Design Decisions Worth Naming / 特筆すべき二つの設計判断
+## Three Design Decisions Worth Naming / 特筆すべき三つの設計判断
 
 ### Redundancy dissolves the boundary problem / 冗長性による境界問題の解消
 
@@ -152,6 +152,79 @@ And here is the asymmetry that makes this project work: **the correctness of kno
 **JA** — AlphaZero、Lean/Coqの証明モデル、Othello-GPT——人間が話さない記号列から知能を立ち上げた系譜には、例外なく**機械判定可能な検証器**がある。AlphaZeroが人類を超えたのは自己対戦したからではなく、勝敗がモデルの意見に依らず決定できたからである。形式的であることは検証器を持つための**前提条件**であって、それ自体ではない。
 
 そしてここに、本企画を成立させる非対称性がある。**知識の正しさは機械検証できないが、論理的妥当性はできる。** 両者が分離されているため、論理コアの訓練コーパスは決定論的に生成でき、決定論的に検証できる——LLM由来の汚染ゼロで。LLMは提案者、決定論的エンジンが検証者である。
+
+---
+
+### Which words a model holds is decided by their shape / モデルが持つ語は、語の形で決まる
+
+**EN** — The section above says that when in doubt, just ask. This is the
+strong form of that: **do not decide.**
+
+A model's vocabulary is finite and the world's is not. Names in particular are
+arbitrary and unbounded — no amount of reasoning yields "John is a human" — so
+Framingo splits its words in two and **marks the split in the orthography**.
+Unmarked words are the instinct vocabulary, roughly the size of Lojban's gismu
+inventory: `Cut`, `Big`, `Human`, `Apple`, learnt from use and held in the
+weights. A leading `'` marks everything else.
+
+The mark is morphological on purpose. Lojban separates root words, borrowings
+and names by shape, and shape is what lets a parser sort them without knowing
+anything — **which means looking a word up need not be something a model
+remembers to do.** The parser resolves every marked word before the model sees
+anything, so the lookup cannot be skipped, and the judgement it would otherwise
+require — *do I already know this one?* — never arises. That judgement is the
+one models are worst at, and the design removes it rather than improving it.
+
+What comes back is a paraphrase into the instinct vocabulary. So a model reasons
+in the words it holds, always, and a word it has never met is no harder than one
+it has met a thousand times. Measured, over a world of 104 names with a quarter
+of them held out of training entirely: **0.996 on names never seen against
+0.999 on names seen throughout.** Lying in the dictionary collapses it to
+**0.107**, which is how completely the lookup is doing the work; and of 2,000
+predictions exactly one names a variable it was not given.
+
+The same rule covers a word the model *derives*. Drop a vessel and it becomes
+`'Shard` — marked, not held, and nowhere in the input to have been fetched in
+advance. It is looked up when it appears, for the same reason and by the same
+test. **Nothing has to notice that it is stuck.**
+
+> A consequence worth stating. If what a model may emit is limited to the
+> instinct vocabulary plus the words handed to it, then inventing a name is not
+> merely detectable — it is **impossible**. A model that holds no names cannot
+> fabricate one. The other half of the Grounding Constraint, over relations
+> between words, remains a check rather than a guarantee.
+
+**JA** — 前節は「疑わしければ常に問い合わせればよい」と述べた。本節はその強い形で
+ある。**判断させない。**
+
+モデルの語彙は有限で、世界の語彙は有限ではない。とりわけ名前は恣意的で無限である
+——「John は人間である」はどれだけ推論しても出てこない。そこで Framingo は語を二つに
+分け、**その区別を表記に刻む。** 無印が本能語彙で、規模はおよそ Lojban の gismu 目録
+に相当する。`Cut`、`Big`、`Human`、`Apple`。用例から学び、重みに保持する。
+先頭の `'` がそれ以外すべてを標示する。
+
+印を形態に置くのは意図的である。Lojban は語根・借用語・名前を**形で**分けており、
+形であるからこそパーサーは何も知らずに仕分けできる。**すなわち、語を引くことは
+モデルが「忘れずに行う」べきことではなくなる。** パーサーが印の付いた語をすべて、
+モデルが何かを見る前に解決する。引き忘れは起こりえず、さもなくば必要だった判断
+——「この語は既に知っているか」——**が生じない。** それはモデルが最も苦手とする判断で
+あり、この設計はそれを改善するのではなく**消している。**
+
+返ってくるのは本能語彙への言い換えである。ゆえにモデルは常に自分が保持する語で考え、
+**一度も出会ったことのない語が、千回出会った語より難しいということがない。**
+名前104語のうち四分の一を訓練から完全に外した世界で測った結果：
+**一度も見ていない名前で 0.996、訓練を通じて見た名前で 0.999。**
+辞書に嘘をつくと **0.107** に崩壊する（それが「引いている」ことの度合いである）。
+2,000件の予測のうち、渡されていない変数を名指したのは**1件**。
+
+同じ規則が、モデルが**導いた**語にも及ぶ。容器を落とせば `'Shard` になる ——
+印が付いており、保持しておらず、**入力のどこにも無かったので事前に引きようがない。**
+現れた時点で引く。同じ理由、同じ判定による。**「行き詰まった」と気づく必要がどこにもない。**
+
+> 述べておくべき帰結。モデルが出力しうる語を「本能語彙 + 渡された語」に限るなら、
+> **名前の捏造は検出可能になるのではなく、不可能になる。** 名前を一つも持たない
+> モデルは、名前を捏造できない。接地制約のもう半分、すなわち語と語の関係については、
+> 依然として保証ではなく検査である。
 
 ---
 
