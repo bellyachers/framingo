@@ -332,12 +332,30 @@ def build(
         )
 
     def draw(pool: set[str], seen: set[str], count: int, split: str):
-        out = []
+        out: list = []
+        # Bounded for the same reason `vessels.build` is: a world with fewer
+        # distinct situations than the corpus asks for does not run slowly, it
+        # does not stop, and from the outside that is indistinguishable from a
+        # model taking its time.
+        misses = 0
         while len(out) < count:
             drawn = sample(w, rng, pool)
             key = str(drawn.meaning())
             if key in seen:
+                misses += 1
+                # A run of nothing but repeats means the world has been
+                # exhausted, and the count is what the corpus asked for rather
+                # than what the world has. Bounding by consecutive misses keeps
+                # the check cheap whatever the count is: bounding by a multiple
+                # of the count made asking for a million spin for a million.
+                if misses > 20_000:
+                    raise ValueError(
+                        f"{split}: the world holds fewer than {count} distinct "
+                        f"situations over these names ({len(out)} found). "
+                        "Widen the world or ask for less."
+                    )
                 continue
+            misses = 0
             seen.add(key)
             out.append(record(drawn, split))
         return out

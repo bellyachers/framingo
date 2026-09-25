@@ -74,10 +74,16 @@ from .syntax import Concept, Event, Pipeline
 
 NEEDS: dict[str, str] = {"Liquid": "Vessel", "Grain": "Sack", "Ember": "Pan"}
 
+# Sized so that the distinct situations outnumber the corpus drawn from them.
+# With a quarter of every group held back, a carried class offers
+# 21 carriers x 21 things x 22 containers = 9,702 situations, and three classes
+# make 29,106 — against the 8,500 a run asks for. The first version offered
+# 2,916 in total and `draw` spun for ever rejecting repeats, which looks
+# exactly like a slow model.
 CARRIED: dict[str, tuple[str, ...]] = {
-    "Liquid": tuple(f"'Lq{i:02}" for i in range(12)),
-    "Grain": tuple(f"'Gr{i:02}" for i in range(12)),
-    "Ember": tuple(f"'Em{i:02}" for i in range(12)),
+    "Liquid": tuple(f"'Lq{i:02}" for i in range(28)),
+    "Grain": tuple(f"'Gr{i:02}" for i in range(28)),
+    "Ember": tuple(f"'Em{i:02}" for i in range(28)),
 }
 
 # Each kind of container comes in two materials, and the material is what the
@@ -91,11 +97,11 @@ CONTAINERS: dict[str, dict[str, str]] = {
 }
 
 VESSEL_NAMES: dict[str, tuple[str, ...]] = {
-    kind: tuple(f"'Cn{i:02}{j}" for j in range(8))
+    kind: tuple(f"'Cn{i:02}{j:02}" for j in range(14))
     for i, kind in enumerate(k for kinds in CONTAINERS.values() for k in kinds)
 }
 
-CARRIERS: tuple[str, ...] = tuple(f"'Pn{i:02}" for i in range(12))
+CARRIERS: tuple[str, ...] = tuple(f"'Pn{i:02}" for i in range(28))
 PLACES: tuple[str, ...] = tuple(f"'Pl{i:02}" for i in range(8))
 
 TAIL: dict[str, tuple[str, ...]] = {
@@ -291,12 +297,30 @@ def build(n_train: int = 8000, n_iid: int = 1000, n_unseen: int = 1000, seed: in
         )
 
     def draw(things: set[str], vessels: set[str], seen: set[str], count: int, split: str):
-        out = []
+        out: list = []
+        # A world holds only so many distinct situations, and asking for more
+        # than it holds is not a slow loop but an endless one: every draw is a
+        # repeat and every repeat is discarded. The bound turns that into a
+        # sentence saying which split asked for what.
+        misses = 0
         while len(out) < count:
             drawn = sample(rng, things, vessels)
             key = str(drawn.meaning())
             if key in seen:
+                misses += 1
+                # A run of nothing but repeats means the world has been
+                # exhausted, and the count is what the corpus asked for rather
+                # than what the world has. Bounding by consecutive misses keeps
+                # the check cheap whatever the count is: bounding by a multiple
+                # of the count made asking for a million spin for a million.
+                if misses > 20_000:
+                    raise ValueError(
+                        f"{split}: the world holds fewer than {count} distinct "
+                        f"situations over these names ({len(out)} found). "
+                        "Widen the world or ask for less."
+                    )
                 continue
+            misses = 0
             seen.add(key)
             out.append(record(drawn, split))
         return out

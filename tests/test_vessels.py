@@ -129,3 +129,27 @@ def test_a_kind_of_container_is_not_itself_a_container():
     for one, meaning, handed, entries in drawn(20):
         kind = meaning.replace(one.vessel, one.vessel_class)
         assert not grade(kind, handed + [entries[one.vessel]]).ok
+
+
+def test_the_world_holds_more_situations_than_a_run_draws():
+    """The first version held 2,916 and a run asked for 8,500, so `draw`
+    rejected repeats for ever. From outside that is a slow model, not a bug.
+
+    Situations are counted by the names drawn, not by the rendered meaning.
+    Variable normalisation leaves only thirty-two distinct meanings in the
+    whole corpus — two materials, eight letters, two orderings — which is the
+    arrangement working, not a shortage: what a model has to read is which
+    letter and which material came back, and the names were never its business.
+    """
+    records = vessels.build(n_train=8000, n_iid=500, n_unseen=500, seed=0)
+    assert len(records) == 9500
+    train = [r for r in records if r.split == "train"]
+    assert len({tuple(sorted(r.names.values())) for r in train}) == 8000
+    assert len({r.meaning for r in train}) < 100
+
+
+def test_asking_for_more_than_the_world_holds_says_so():
+    import pytest
+
+    with pytest.raises(ValueError, match="fewer than"):
+        vessels.build(n_train=200_000, n_iid=5, n_unseen=5, seed=0)

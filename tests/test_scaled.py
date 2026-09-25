@@ -117,3 +117,11 @@ def test_the_leak_dial_controls_what_a_modifier_gives_away(leak, floor, ceiling)
         by_modifier[modifier][klass] += n
     guessable = sum(c.most_common(1)[0][1] for c in by_modifier.values()) / sum(pairs.values())
     assert floor <= guessable <= ceiling, guessable
+
+
+def test_asking_for_more_than_the_world_holds_says_so():
+    """Bounded by consecutive misses rather than by a multiple of the count,
+    so the check costs the same whatever is asked for."""
+    w = scaled.make(n_classes=4, n_verbs=2, names_per_class=2, seed=0)
+    with pytest.raises(ValueError, match="fewer than"):
+        scaled.build(w, n_train=200_000, n_iid=5, n_unseen=5, seed=0)
