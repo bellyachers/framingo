@@ -222,33 +222,17 @@ def make_batches(rows, vocab, form, batch_size, rng, ask: bool = False, handed: 
 
 @torch.no_grad()
 def generate(model, vocab, prompts: list[list[int]], device, max_new: int = 48) -> list[list[str]]:
-    """Greedy decoding, batched by prompt length so no padding is needed."""
-    model.eval()
-    by_len: dict[int, list[int]] = defaultdict(list)
-    for i, p in enumerate(prompts):
-        by_len[len(p)].append(i)
-    out: list[list[str]] = [[] for _ in prompts]
-    eos = vocab.stoi[EOS]
-    for _, idx in by_len.items():
-        for s in range(0, len(idx), 256):
-            group = idx[s : s + 256]
-            ids = torch.tensor([prompts[i] for i in group], device=device)
-            done = torch.zeros(len(group), dtype=torch.bool, device=device)
-            for _ in range(max_new):
-                if ids.shape[1] >= model.max_len:
-                    break
-                nxt = model(ids)[:, -1].argmax(-1)
-                nxt = torch.where(done, torch.full_like(nxt, eos), nxt)
-                ids = torch.cat([ids, nxt[:, None]], 1)
-                done |= nxt == eos
-                if done.all():
-                    break
-            for row, i in zip(ids.tolist(), group):
-                gen = row[len(prompts[i]) :]
-                if eos in gen:
-                    gen = gen[: gen.index(eos)]
-                out[i] = vocab.decode(gen)
-    return out
+    """Greedy decoding to the end of the answer, as words.
+
+    The decoding is `_continue`, which batches across prompts of unequal
+    length; this only says where to stop and turns the ids back into words.
+    Two copies of a decoding loop was one too many: the copy that used to live
+    here grouped by exact length, which is why a lying-dictionary control took
+    longer to run than the training it was controlling.
+    """
+    written = _continue(model, vocab, prompts, device, vocab.stoi[EOS], max_new)
+    return [vocab.decode(ids) for ids in written]
+
 
 
 @torch.no_grad()
