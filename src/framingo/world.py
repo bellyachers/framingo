@@ -17,7 +17,8 @@ Physics, deliberately tiny:
 - Drop and Push may name where the target fell from (``src:``); the fall
   keeps that source.
 - Carry moves both the target and the carrier: ``Carry agt:A tgt:Y dst:P``
-  gives ``At tgt:Y loc:P -> At tgt:A loc:P``.
+  gives ``At tgt:Y loc:P &> At tgt:A loc:P`` — joined by the connective for
+  results that hold at once, because neither arrival causes the other.
 - Carry can target animates as well as objects. This is what gives the
   role-swap split something to test: an animate that is only ever a carrier
   in training must be recognised as the carried at test time.
@@ -103,7 +104,12 @@ def consequence(action: Event) -> Pipeline:
     if verb == "Carry":
         (place,) = action.get("dst")
         (agent,) = action.get("agt")
-        return Pipeline((ev("At", tgt=target, loc=place), ev("At", tgt=agent, loc=place)), ("->",))
+        # `&>`, not `->`: the carrier and the carried arrive at one and the
+        # same moment, and neither arrival brought the other about. Writing
+        # this chain with `->` asserted that the carried thing's arrival
+        # caused the carrier's, which is false, and the verifier enforced it
+        # as physics once it began to read order (spec ch.4 §1.1, §1.3).
+        return Pipeline((ev("At", tgt=target, loc=place), ev("At", tgt=agent, loc=place)), ("&>",))
     if verb in ("Drop", "Push"):
         src = {"src": s for s in action.get("src")}
         fall = ev("Fall", tgt=target, dst=C("Floor"), **src)
@@ -167,22 +173,69 @@ def sample(rng: random.Random) -> Sample:
     return Sample(action, consequence(action), outcome_connector(action))
 
 
+def _divisions(kind: Kind) -> list[tuple[str, str]]:
+    """Every target ``thing()`` can build for this kind, paired with what is
+    left of it once it has been divided.
+
+    ``thing()`` writes ``[structural].[intrinsic].Base`` with at most one of
+    each and either one free to be absent, so the combinations are exactly the
+    product of the two modifier lists, each widened with "absent". The
+    structural modifier does not survive the division and the intrinsic one
+    does (``keep_intrinsic``); this states that a second time, in the shape a
+    rule needs, so that the checker really is a second opinion on the physics.
+    """
+    out = []
+    for structural in (None,) + kind.structural:
+        for intrinsic in (None,) + kind.intrinsic:
+            target = ".".join(m for m in (structural, intrinsic, kind.base) if m)
+            out.append((target, ".".join(m for m in (intrinsic, kind.base) if m)))
+    return out
+
+
 def core_rules() -> str:
     """The same physics written as Framingo RULEs, for the grounding checker.
 
     One rule per kind rather than one per class, because the checker does not
     infer class membership (grounding.LIMITS). Writing them out is the
     minimal core doing its job: the checker must be able to derive every
-    result the generator claims.
+    result the generator claims — and nothing beyond it, or a fabrication the
+    core happens to license passes unflagged.
+
+    Division is enumerated over modifier combinations, which is why the core
+    is long. The rule language has no "drop segment M from the target"
+    operation, and ``It`` necessarily stands for the whole antecedent, so
+    ``Cut tgt:Apple -> Become agt:It.Slice`` derives ``Big.Red.Apple.Slice``
+    from ``Cut tgt:Big.Red.Apple``: the structural modifier the world destroys
+    survives in the core, which then accepts the copy error exactly as readily
+    as the truth. The distinction between intrinsic and structural can only be
+    carried by naming the combinations and writing the surviving concept out.
+
+    That in turn is why the enumerated premises are marked ``Every.``. The
+    reading is universal, so the mark belongs there anyway, but it is also
+    load-bearing: ``It`` copies its antecedent's determiner, so the mark is
+    what separates the concepts that stand for the matched target (``Fall
+    tgt:It``, still the whole thing) from the one written out (``Become
+    agt:Red.Apple.Slice``, only what survived). Without it the checker expands
+    the written-out concept back into the matched target and the enumeration
+    buys nothing.
+
+    Conservation keeps ``It`` and needs no enumeration: falling, being
+    deformed and being carried lose nothing, so the whole antecedent is the
+    right answer there.
     """
     lines = []
     for k in KINDS:
         if k.cuttable:
-            lines.append(f"RULE: Action: Cut tgt:{k.base} tool:Knife -> Result: Become agt:It.Slice")
-            lines.append(
-                f"RULE: Action: Cut tgt:{k.base} tool:Ruler !> Result: Become agt:It.Slice"
-                " -> Result: Deform tgt:It reason:Inappropriate.Tool"
-            )
+            for target, slices in _divisions(k):
+                lines.append(
+                    f"RULE: Action: Cut tgt:Every.{target} tool:Knife"
+                    f" -> Result: Become agt:{slices}.Slice"
+                )
+                lines.append(
+                    f"RULE: Action: Cut tgt:Every.{target} tool:Ruler"
+                    f" !> Result: Become agt:{slices}.Slice"
+                    " -> Result: Deform tgt:It reason:Inappropriate.Tool"
+                )
     targets = [(k.base, k.break_prone) for k in KINDS] + [(a, False) for a in ANIMATES]
     for base, break_prone in targets:
         verbs = ("Drop", "Push") if base in KIND else ()
@@ -190,12 +243,21 @@ def core_rules() -> str:
             for src in [None] + [".".join(s) for s in SOURCES]:
                 src_slot = f" src:{src}" if src else ""
                 fall = f"Fall tgt:It dst:Floor{src_slot}"
-                then = " -> Result: Become agt:It.Piece" if break_prone else ""
-                lines.append(f"RULE: Action: {verb} tgt:{base}{src_slot} -> {fall}{then}")
+                if not break_prone:
+                    # nothing is divided, so the fall may keep the whole target
+                    lines.append(f"RULE: Action: {verb} tgt:{base}{src_slot} -> {fall}")
+                    continue
+                for target, pieces in _divisions(KIND[base]):
+                    lines.append(
+                        f"RULE: Action: {verb} tgt:Every.{target}{src_slot}"
+                        f" -> {fall} -> Result: Become agt:{pieces}.Piece"
+                    )
         for place in PLACES:
-            # <A> carries the carrier across to the second event (spec ch.3 §5.2)
+            # <A> carries the carrier across to the second event (spec ch.3
+            # §5.2), and `&>` says the two arrivals hold at once rather than
+            # one causing the other (spec ch.4 §1.3).
             lines.append(
                 f"RULE: Action: Carry agt:Every.Thing<A> tgt:{base} dst:{place}"
-                f" -> At tgt:It loc:{place} -> At tgt:It<A> loc:{place}"
+                f" -> At tgt:It loc:{place} &> At tgt:It<A> loc:{place}"
             )
     return "\n".join(lines)
