@@ -89,3 +89,31 @@ def test_held_back_names_never_train():
         for n in r.names.values()
     }
     assert not (trained & unseen_pool)
+
+
+@pytest.mark.parametrize("leak,floor,ceiling", [(0.0, 0.0, 0.30), (1.0, 0.95, 1.01)])
+def test_the_leak_dial_controls_what_a_modifier_gives_away(leak, floor, ceiling):
+    """How much of a thing's class can be read off the modifier it wears.
+
+    At zero the modifiers say nothing, so the dictionary is the only way to
+    know what something is. At one they say everything, and a model can pick
+    the class up from use — knowledge that is in no dictionary and no rule, and
+    that nothing can trace an output to. The difference between what a model
+    trained at each setting loses when the dictionary is made to lie is how
+    much of that it took.
+    """
+    import collections
+
+    w = scaled.make(n_classes=12, n_verbs=3, names_per_class=8, seed=0, leak=leak)
+    rng = random.Random(0)
+    pairs: collections.Counter = collections.Counter()
+    for _ in range(1200):
+        drawn = scaled.sample(w, rng)
+        (target,) = drawn.action.get("tgt")
+        if len(target.segments) == 2:
+            pairs[(target.segments[0], scaled.classes_of(w, target.segments[-1])[0])] += 1
+    by_modifier: dict[str, collections.Counter] = collections.defaultdict(collections.Counter)
+    for (modifier, klass), n in pairs.items():
+        by_modifier[modifier][klass] += n
+    guessable = sum(c.most_common(1)[0][1] for c in by_modifier.values()) / sum(pairs.values())
+    assert floor <= guessable <= ceiling, guessable

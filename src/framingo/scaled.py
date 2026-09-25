@@ -45,6 +45,15 @@ class World:
     outcomes: dict[str, dict[str, str]]
     outcome_class: dict[str, str]
     tail: dict[str, tuple[str, ...]]
+    # How often a thing wears the modifier that goes with its class. At 0 the
+    # modifiers say nothing and the dictionary is the only way to know what
+    # something is; above 0 they leak, and a model can pick the class up from
+    # use, as a language model picks up that `Big` goes with mountains and not
+    # with ants. That knowledge is in no dictionary and in no rule, so nothing
+    # can trace an output to it — the point of the dial is to find out whether
+    # a model takes it, and how much of the lookup it then stops doing.
+    leak: float = 0.0
+    signature: dict[str, str] = None  # type: ignore[assignment]
 
     @property
     def n_rules(self) -> int:
@@ -58,6 +67,7 @@ def make(
     names_per_class: int = 10,
     n_states: int = 4,
     seed: int = 0,
+    leak: float = 0.0,
 ) -> World:
     """A world of the given size.
 
@@ -74,7 +84,9 @@ def make(
         k: tuple(f"'Nm{i * names_per_class + j:04}" for j in range(names_per_class))
         for i, k in enumerate(classes)
     }
-    modifiers = tuple(f"Md{i:02}" for i in range(max(4, n_classes // 2)))
+    # at least one per class, so a signature is not shared and the leak is
+    # a clean dial rather than a muddy one
+    modifiers = tuple(f"Md{i:03}" for i in range(max(8, n_classes)))
     verbs = tuple(f"Vb{i:02}" for i in range(n_verbs))
 
     # Each verb takes some classes and leaves its own outcome on each. A quarter
@@ -101,7 +113,12 @@ def make(
     for i, state in enumerate(states):
         length = i % 3  # 0, 1 or 2 further events
         tail[state] = tuple(steps[i * 2 : i * 2 + length])
-    return World(parents, names, modifiers, verbs, takes, outcomes, outcome_class, tail)
+    # one modifier per class, for the leak
+    signature = {k: modifiers[i % len(modifiers)] for i, k in enumerate(classes)}
+    return World(
+        parents, names, modifiers, verbs, takes, outcomes, outcome_class, tail,
+        leak, signature,
+    )
 
 
 # -- the same four functions the hand-written world has -----------------------
@@ -200,7 +217,11 @@ class Sample:
 def thing(w: World, rng: random.Random, klass: str, pool: set[str] | None) -> Concept:
     members = [n for n in w.names[klass] if pool is None or n in pool]
     name = rng.choice(members)
-    return C(rng.choice(w.modifiers), name) if rng.random() < 0.5 else C(name)
+    if rng.random() >= 0.5:
+        return C(name)
+    if w.leak and rng.random() < w.leak:
+        return C(w.signature[klass], name)
+    return C(rng.choice(w.modifiers), name)
 
 
 def any_thing(w: World, rng: random.Random, pool: set[str] | None) -> Concept:
