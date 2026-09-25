@@ -76,6 +76,15 @@ with an example that occurs nowhere in the data. A number that decides something
 is worth computing twice by different means.
 **主要な主張は、自分のものも含めて測り直す。**
 
+**Name a metric by imagining it non-zero.**
+`false_alarm_rate` counts benign outputs the verifier flags, and the name
+assumes a correct answer ought to ground — which is the assumption the charter
+denies. It read correctly while it was zero, which it is wherever the model
+looks its words up. The first arm that did not look them up put a fifth of its
+correct answers there, and the name reported the verifier working as the
+verifier failing.
+**指標の名前は、それが 0 でない状況を想像してから付ける。**
+
 **Before removing something from an experiment, grep the charter for it.**
 A corpus was once designed to test "pure logic" by stripping the world away,
 and chapter 3 says in as many words that cutting that layer leaves nothing
@@ -94,6 +103,12 @@ choosing one.
 - **Give a parallel agent its own `.venv` in its worktree.** `VIRTUAL_ENV`
   points at the main checkout, so `uv run --active` there rewrites the editable
   install and a job running in the main tree starts importing half-finished code.
+- **Work in a worktree while an experiment is running.** Every run is a fresh
+  process that imports `src/` when it starts, so a sweep on its third run reads
+  whatever the tree says then, not what it said when the sweep began.
+  `uv sync` in a new worktree takes seconds, the packages being hardlinked from
+  the cache. **But a worktree protects the other tree, not itself**: editing
+  the file a job in *this* tree will read next has cost a run here too.
 
 ## Commits / コミット
 
