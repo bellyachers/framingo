@@ -718,6 +718,22 @@ def _plainly(text: str, names: dict) -> str:
     return _MARK.sub(lambda m: names.get(m.group(0), m.group(0)), text)
 
 
+def vessel_tails() -> dict[str, tuple[str, ...]]:
+    """What the derivation writes once it knows what came back.
+
+    The thing goes in the container, and then the container's material decides
+    the rest. `followed_the_lie` compares against the whole of that, so the
+    first event belongs in the table: without it the comparison is off by one
+    and reads 0.000 however exactly the lie was followed — a model reading the
+    answer perfectly, reported as ignoring it.
+    """
+    return {
+        klass: ("In",) + vessels.TAIL[material]
+        for materials in vessels.CONTAINERS.values()
+        for klass, material in materials.items()
+    }
+
+
 def _steps(text: str) -> tuple[str, ...]:
     """The verbs of a stretch of pipeline, in order."""
     out = []
@@ -1038,11 +1054,7 @@ def main() -> None:
             klass for materials in vessels.CONTAINERS.values() for klass in materials
         }))
         name_classes = sorted(vessels.names())
-        tails = {
-            klass: vessels.TAIL[material]
-            for materials in vessels.CONTAINERS.values()
-            for klass, material in materials.items()
-        }
+        tails = vessel_tails()
     elif args.corpus in ("basics", "scaled"):
         if args.corpus == "scaled":
             world = scaled.make(

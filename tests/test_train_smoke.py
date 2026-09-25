@@ -143,13 +143,9 @@ def _vessel_rows(n=120):
 
     records = vessels.build(n_train=20, n_iid=n, n_unseen=0, seed=0)
     rows = [r for r in records if r.split == "test_iid"]
-    core = parse(vessels.core_rules())
-    tails = {
-        klass: vessels.TAIL[material]
-        for materials in vessels.CONTAINERS.values()
-        for klass, material in materials.items()
-    }
-    return rows, core, tails, evaluate_stopping
+    from train import vessel_tails  # noqa: PLC0415
+
+    return rows, parse(vessels.core_rules()), vessel_tails(), evaluate_stopping
 
 
 def _as_fetched(rows, tail_of=None, head_of=None):
@@ -194,3 +190,30 @@ def test_the_grader_notices_the_wrong_class_being_asked_about():
     got = evaluate_stopping(rows, fixed, "tagged", core, tails)
     # a third of the situations really do want a pan, so this is not zero
     assert 0.2 < got["asked_about_the_right_words"] < 0.45
+
+
+def test_following_the_lie_is_measured_against_the_whole_tail():
+    """The derivation writes `In ...` and then the material's steps. Comparing
+    only the material's steps is off by one event and reads 0.000 however
+    exactly the lie was followed — which is how a model reading the answer
+    perfectly would be reported as ignoring it."""
+    from framingo import vessels
+
+    material_of = {
+        klass: material
+        for materials in vessels.CONTAINERS.values()
+        for klass, material in materials.items()
+    }
+    rows, core, tails, evaluate_stopping = _vessel_rows(60)
+    fetched = _as_fetched(rows)
+    for r, got in zip(rows, fetched):
+        was = r.handed.rsplit(" is:", 1)[-1].strip()
+        lied = next(k for k, m in material_of.items() if m != material_of[was])
+        letter = sorted(set(r.names) - {"'A", "'B"})[0]
+        steps = " -> ".join(
+            f"{step} tgt:{letter}" for step in vessels.TAIL[material_of[lied]]
+        )
+        got["lied"] = f"FACT: State tgt:{letter} is:{lied}"
+        got["pred_lied"] = f"{r.head} -> In loc:{letter} tgt:'B -> {steps}"
+    out = evaluate_stopping(rows, fetched, "tagged", core, tails)
+    assert out["followed_the_lie"] == 1.0
