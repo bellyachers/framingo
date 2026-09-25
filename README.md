@@ -483,8 +483,14 @@ rejection of sound output, not blindness** — the better half of that trade to
 be on. It also means a detection rate quoted on its own is worthless: an empty
 core detects 100% of fabrications while rejecting 100% of everything else, so
 **the claim has to be stated as a pair.** How steep the trade is depends on how
-finely the core is written, not on any law; this core enumerates rules, and a
-core of general class-level rules would lose far more per rule removed.
+finely the core is written, not on any law — and that has since been measured
+rather than assumed. Writing the same physics as general class-level rules
+instead of one rule per name costs **3.85 points of sound output per rule
+removed against 0.15**, and which rule is dropped matters far more. **A core
+written well is a core with less redundancy inside it**, so a gap in it costs
+more: compressing this core from 440 rules to 42 made it readable, faster and
+able to reach a name it had never seen, and made chapter 9's coverage problem
+harder rather than easier.
 
 **Knowledge has been taken out of the weights and put behind a query.** With
 the minimal core **empty**, what a query returns grounds every consequence this
