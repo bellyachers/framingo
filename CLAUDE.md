@@ -42,14 +42,19 @@ knowledge; the language is how it is carried.
 These were arrived at by getting them wrong, each more than once. They are here
 rather than in the working journal because they are settled.
 
-**A control is not a control until you have counted what it saw.**
+**Count what an arm saw, and what a test set is actually testing.**
 "There is a control arm" is not the claim; "the control arm was trained on N of
 the thing it is meant to bound" is. Eighteen runs once compared a holdout arm
 against a control that had been trained on **zero** examples of the shape, and
 the result read as a clean negative. Separately, an arm that looked as though
 it were ignoring a lookup turned out to be in a world where the lookup decided
-almost nothing. Both were invisible until the corpus was counted.
-**対照は、それが何を見たかを数えるまで対照ではない。**
+almost nothing.
+
+The same applies to the test set. A corpus built to measure whether a model
+uses what it fetched turned out to need the fetch in 24% of its examples, so
+the headline figure was two thirds a measurement of something else. Split the
+result by whether the thing being tested was in play, and report the split.
+**対照も、テスト集合も、それが何を見て何を試しているかを数えるまでは、そう呼べない。**
 
 **Quote a detection rate with a false-alarm rate or not at all.**
 An empty core flags everything, so it "detects" 100% of fabrications while
