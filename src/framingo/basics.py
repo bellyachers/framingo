@@ -106,19 +106,56 @@ VERBS = ("Cut", "Eat", "Drop", "Carry")
 # knowing it was a garment told a model nothing it could not read off `Wear`.
 #
 # If the class is to be fetched, the class has to matter.
+# Some outcomes are marked. They are words the model does not hold, and —
+# unlike a marked word in the input — they cannot have been fetched in advance,
+# because they were not there to fetch: they come into existence only once the
+# first step has been taken. This is the case the maintainer named, where what
+# has to be looked up is only knowable after thinking.
+#
+# Nothing about that requires a judgement. The rule is the same as for a marked
+# word in the input: if it carries the mark, look it up. Whether it arrived from
+# outside or was just derived makes no difference to its shape.
 OUTCOMES: dict[str, dict[str, str]] = {
-    "Cut": {"Fruit": "Slice", "Staple": "Chunk", "Garment": "Scrap"},
-    "Eat": {"Fruit": "Core", "Staple": "Crumb"},
+    "Cut": {"Fruit": "Slice", "Staple": "Chunk", "Garment": "'Scrap"},
+    "Eat": {"Fruit": "Core", "Staple": "'Crumb"},
     "Drop": {
-        "Vessel": "Piece", "Fruit": "Bruise", "Staple": "Crumb", "Garment": "Heap",
-        "Opening": "Bang", "Liquid": "Splash", "Blade": "Clatter", "Club": "Thud",
+        "Vessel": "'Shard", "Fruit": "Bruise", "Staple": "'Crumb", "Garment": "Heap",
+        "Opening": "Bang", "Liquid": "'Splash", "Blade": "Clatter", "Club": "Thud",
         "Human": "Stumble", "Creature": "Startle",
     },
     "Carry": {
-        "Human": "Held", "Creature": "Held", "Vessel": "Rattle", "Fruit": "Cradled",
+        "Human": "Held", "Creature": "Held", "Vessel": "'Rattle", "Fruit": "Cradled",
         "Staple": "Cradled", "Garment": "Draped", "Opening": "Hauled",
-        "Liquid": "Sloshed", "Blade": "Sheathed", "Club": "Shouldered",
+        "Liquid": "'Sloshed", "Blade": "Sheathed", "Club": "Shouldered",
     },
+}
+
+# What kind of state an outcome leaves a thing in, and what then happens to it.
+#
+# This is the second hop. A first world stopped at the outcome, so every answer
+# was one rule applied once and nothing had to be derived in order to derive
+# something else. Here the outcome's own class decides what follows, so a model
+# that gets the first step wrong gets the whole tail wrong — which is what makes
+# the chain a chain rather than a longer template.
+#
+# Each step uses a *different* verb. Appending to the same concept instead
+# (`X.Piece` then `X.Piece.Swept`) leaves the first rule's premise still
+# matching its own conclusion, and it fires again on what it just produced.
+OUTCOME_CLASS: dict[str, str] = {
+    "'Shard": "Broken", "'Crumb": "Broken", "Clatter": "Broken",
+    "Slice": "Divided", "Chunk": "Divided", "Core": "Divided", "'Scrap": "Divided",
+    "Bruise": "Marked", "Heap": "Marked", "'Splash": "Marked", "Thud": "Marked",
+    "Bang": "Marked", "Stumble": "Marked", "Startle": "Marked",
+    "Held": "Moved", "Cradled": "Moved", "Draped": "Moved", "Sheathed": "Moved",
+    "Shouldered": "Moved", "Hauled": "Moved", "'Rattle": "Moved", "'Sloshed": "Moved",
+}
+
+# The tail each state leads to, as verbs applied in turn to the same thing.
+TAIL: dict[str, tuple[str, ...]] = {
+    "Broken": ("Sweep", "Discard"),
+    "Divided": ("Dry", "Store"),
+    "Marked": ("Wipe",),
+    "Moved": (),
 }
 
 # What each verb may take, and so which names the sampler may draw.
@@ -176,7 +213,25 @@ def dictionary(names: tuple[str, ...] | None = None) -> str:
         for name in members:
             if names is None or name in names:
                 lines.append(f"FACT: State tgt:{name} is:{klass}")
+    # and the marked outcomes, which are looked up the same way although they
+    # arrive from a derivation rather than from the input
+    lines.append(outcome_classes(marked=True))
     return "\n".join(lines)
+
+
+def outcome_classes(marked: bool) -> str:
+    """What state each outcome leaves behind.
+
+    Split by the mark, as everything else is. An unmarked outcome is a word the
+    model holds, so what it is a kind of belongs to the core. A marked one it
+    does not hold, so that belongs to the dictionary — and cannot be fetched
+    before the model has taken the step that produces it.
+    """
+    return "\n".join(
+        f"FACT: State tgt:{word} is:{state}"
+        for word, state in OUTCOME_CLASS.items()
+        if is_instinct(word) is not marked
+    )
 
 
 def hierarchy() -> str:
@@ -229,6 +284,13 @@ def _core_lines() -> list[str]:
             f" src:Every.Thing<S> -> Result: Fall tgt:It dst:Floor src:It<S>"
             f" -> Result: Become agt:It.{left}"
         )
+    for state, steps in TAIL.items():
+        previous = f"Every.{state}.Thing"
+        for i, step in enumerate(steps):
+            if i == 0:
+                lines.append(f"RULE: Action: Become agt:{previous} -> Result: {step} tgt:It")
+            else:
+                lines.append(f"RULE: Action: {steps[i - 1]} tgt:Every.Thing -> Result: {step} tgt:It")
     for klass, left in OUTCOMES["Carry"].items():
         # The outcome comes first, which is both the natural order — a thing is
         # taken up before it arrives anywhere — and the only order the language
@@ -251,7 +313,7 @@ def core_rules() -> str:
 
     The class hierarchy is part of it, for the reason `hierarchy` gives.
     """
-    return hierarchy() + "\n" + "\n".join(_core_lines())
+    return hierarchy() + "\n" + outcome_classes(marked=False) + "\n" + "\n".join(_core_lines())
 
 
 # -- drawing a situation ------------------------------------------------------
@@ -316,24 +378,27 @@ def consequence(action: Event) -> tuple[Pipeline, str]:
     (agent,) = action.get("agt")
     left = outcome(verb, target.segments[-1])
     assert left is not None, f"{verb} has no outcome for {target}"
-    became = ev("Become", agt=C(*target.segments, left))
+    left_concept = C(*target.segments, left)
+    became = ev("Become", agt=left_concept)
+    tail = tuple(ev(step, tgt=left_concept) for step in TAIL[OUTCOME_CLASS[left]])
     if verb == "Cut":
         (tool,) = action.get("tool")
         if "Sharp" in _all_classes(tool.segments[-1]):
-            return Pipeline((became,)), "->"
+            return Pipeline((became,) + tail, ("->",) * len(tail)), "->"
+        # nothing was divided, so nothing follows from having been divided
         deformed = ev("Deform", tgt=target, reason=C("Inappropriate", "Tool"))
         return Pipeline((became, deformed), ("->",)), "!>"
     if verb == "Eat":
-        return Pipeline((became,)), "->"
+        return Pipeline((became,) + tail, ("->",) * len(tail)), "->"
     if verb == "Drop":
         src = {"src": s for s in action.get("src")}
         fall = ev("Fall", tgt=target, dst=C("Floor"), **src)
-        return Pipeline((fall, became), ("->",)), "->"
+        return Pipeline((fall, became) + tail, ("->",) * (1 + len(tail))), "->"
     if verb == "Carry":
         # taken up, then both arrive at once (see `_core_lines` on the order)
         (place,) = action.get("dst")
         arrive = (ev("At", tgt=target, loc=place), ev("At", tgt=agent, loc=place))
-        return Pipeline((became,) + arrive, ("->", "&>")), "->"
+        return Pipeline((became,) + arrive + tail, ("->", "&>") + ("->",) * len(tail)), "->"
     raise ValueError(f"no physics for {verb}")
 
 
@@ -450,14 +515,45 @@ def build(
 
     def record(drawn: Sample, split: str) -> Record:
         marked = [w for w in drawn.words() if not is_instinct(w)]
-        handed = " ".join(entries[w] for w in dict.fromkeys(marked))
+        handed_in = " ".join(entries[w] for w in dict.fromkeys(marked))
         action = tagged_event(drawn.action, rng)
+        events = list(drawn.result.events)
+        connectors = drawn.result.connectors
+
+        # Where the derivation has to stop and look something up: the first
+        # event that brings in a marked word the input did not carry. There is
+        # no judgement in finding it — the mark is on the word. If nothing is
+        # brought in, the stop is at the end, because the lookup happens either
+        # way and only its answer is empty.
+        seen = set(marked)
+        cut = len(events)
+        for i, event in enumerate(events):
+            fresh = {w for w in _MARKED.findall(str(event)) if w not in seen}
+            if fresh:
+                cut = i + 1
+                seen |= fresh
+                break
+        derived = sorted(seen - set(marked))
+        handed_mid = " ".join(entries[w] for w in derived if w in entries)
+
+        head = f"{drawn.connector} {tagged_pipeline(Pipeline(tuple(events[:cut]), connectors[: cut - 1]))}"
+        tail = (
+            f"{connectors[cut - 1]} {tagged_pipeline(Pipeline(tuple(events[cut:]), connectors[cut:]))}"
+            if cut < len(events)
+            else ""
+        )
         out = f"{drawn.connector} {tagged_pipeline(drawn.result)}"
         meaning = str(drawn.meaning())
         if variables:
             # the action first, so the variables are numbered as they are read
-            action, handed, out, meaning = normalise([action, handed, out, meaning])
+            action, handed_in, out, meaning, head, handed_mid, tail = normalise(
+                [action, handed_in, out, meaning, head, handed_mid, tail]
+            )
+        handed = handed_in
         return Record(
+            head=head,
+            handed=handed_mid,
+            tail=tail,
             split=split,
             meaning=meaning,
             tagged_in=action,

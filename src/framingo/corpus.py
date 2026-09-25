@@ -121,6 +121,14 @@ class Record:
     # nothing, which is a record of a gap in coverage, not a failure to render.
     query: str = ""
     answer: str = ""
+    # A derivation that stops part way to look something up. `head` is what the
+    # model writes before it has to, `handed` is what comes back, `tail` is the
+    # rest. A marked word the model *derived* could not have been fetched in
+    # advance — it did not exist until the step that produced it — so this is
+    # the one lookup a parser cannot do for it.
+    head: str = ""
+    handed: str = ""
+    tail: str = ""
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)
