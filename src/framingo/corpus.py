@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import json
 import random
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import parse
@@ -129,6 +129,11 @@ class Record:
     head: str = ""
     handed: str = ""
     tail: str = ""
+    # Variable back to the word it stands for. A model is shown `'A`, `'B` so
+    # that it can learn nothing about any particular name, but the core is
+    # written in the world's own words, so grading has to undo the renaming
+    # before it can check anything against the core.
+    names: dict = field(default_factory=dict)
 
     def to_json(self) -> str:
         return json.dumps(self.__dict__, ensure_ascii=False)

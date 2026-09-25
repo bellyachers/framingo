@@ -429,7 +429,7 @@ HELD_BACK = 0.25
 _MARKED = re.compile(r"'[A-Za-z][A-Za-z0-9_-]*")
 
 
-def normalise(texts: list[str]) -> list[str]:
+def normalise(texts: list[str]) -> tuple[list[str], dict[str, str]]:
     """Rewrite every marked word as a variable, the same way across one example.
 
     `'John` becomes `'A`, the next new name `'B`, and so on in the order they
@@ -447,6 +447,12 @@ def normalise(texts: list[str]) -> list[str]:
     thing in every example. "The model holds no names" stops being an intention
     and becomes a fact about what it was shown.
 
+    Returns the rewritten texts and the way back. Grading needs the way back:
+    the core is written in the world's own words, so `Become agt:It.'Crumb`
+    cannot derive a model's `Become agt:'A.'C` until the renaming is undone.
+    That was not visible until an outcome carried the mark, because until then
+    only names were renamed and the core names none.
+
     The price is that a name's identity cannot outlive the example. Anything
     that tracks the same individual across turns will need this revisited.
     """
@@ -458,7 +464,7 @@ def normalise(texts: list[str]) -> list[str]:
             seen[word] = f"'{chr(ord('A') + len(seen))}"
         return seen[word]
 
-    return [_MARKED.sub(swap, t) for t in texts]
+    return [_MARKED.sub(swap, t) for t in texts], {v: k for k, v in seen.items()}
 
 
 def _pools(seed: int) -> tuple[set[str], set[str]]:
@@ -544,9 +550,10 @@ def build(
         )
         out = f"{drawn.connector} {tagged_pipeline(drawn.result)}"
         meaning = str(drawn.meaning())
+        names: dict[str, str] = {}
         if variables:
             # the action first, so the variables are numbered as they are read
-            action, handed_in, out, meaning, head, handed_mid, tail = normalise(
+            (action, handed_in, out, meaning, head, handed_mid, tail), names = normalise(
                 [action, handed_in, out, meaning, head, handed_mid, tail]
             )
         handed = handed_in
@@ -554,6 +561,7 @@ def build(
             head=head,
             handed=handed_mid,
             tail=tail,
+            names=names,
             split=split,
             meaning=meaning,
             tagged_in=action,

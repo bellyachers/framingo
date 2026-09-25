@@ -331,7 +331,19 @@ def generate_stopping(model, vocab, rows, device, form: str, entries, max_new: i
         head = detokenize(vocab.decode(written))
         given = set(_MARK.findall(getattr(r, fin) + " " + r.answer))
         fresh = [w for w in dict.fromkeys(_MARK.findall(head)) if w not in given]
-        handed = " ".join(entries[w] for w in fresh if w in entries)
+        # Keyed by what the model can actually write. A marked word is
+        # renumbered per example (`basics.normalise`), so a store keyed by the
+        # world's own names can never answer a question about `'C`: the model
+        # asked correctly and was handed nothing, every time, and then had to
+        # guess the rest of the chain. What the store holds for this example is
+        # what its own handovers say, so the entries are built from those. A
+        # word the model invented is in neither and comes back empty, which is
+        # the behaviour that was wanted.
+        local = dict(entries)
+        for line in (r.answer + " " + r.handed).split("FACT: "):
+            if "tgt:'" in line:
+                local["'" + line.split("tgt:'")[1].split()[0]] = "FACT: " + line.strip()
+        handed = " ".join(local[w] for w in fresh if w in local)
         out.append(
             {
                 "head": head,
@@ -593,6 +605,20 @@ def _scrambled(model, vocab, rows, device, form: str, seed: int) -> float:
     return correct / len(rows)
 
 
+def _plainly(text: str, names: dict) -> str:
+    """Put the world's own words back where a variable stands for one.
+
+    A model is shown `'A` and `'B` so that it can learn nothing about any
+    particular name. The core is written in words, so grading has to undo that
+    before it can ask the core anything. A variable with no way back — one the
+    model invented — is left alone, and is then ungrounded, which is what
+    should happen to a name nobody handed over.
+    """
+    if not names:
+        return text
+    return _MARK.sub(lambda m: names.get(m.group(0), m.group(0)), text)
+
+
 def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
     """Grade a derivation that stopped part way to look something up.
 
@@ -619,11 +645,16 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
             fabricated += 1
             fabricated_flagged += 1
             continue
-        action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
-        context = [action] + list(parse(r.answer))
+        # The core is written in the world's own words and the model was shown
+        # variables, so the renaming has to be undone before anything can be
+        # checked against it. A variable the model invented has no way back and
+        # stays as it is, which leaves it ungrounded — the right answer.
+        plain = parse_one("FACT: " + _plainly(full, r.names))
+        action = Statement(Pipeline((plain.pipeline.events[0],)), prefix="FACT")
+        context = [action] + list(parse(_plainly(r.answer, r.names)))
         if got["handed"]:
-            context += list(parse(got["handed"]))
-        report = check([stmt], context, core)
+            context += list(parse(_plainly(got["handed"], r.names)))
+        report = check([plain], context, core)
         grounded += report.ok
         if ok:
             benign_flagged += not report.ok
@@ -673,8 +704,13 @@ def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
                 fabricated_flagged += 1  # an unparseable output is rejected outright
                 continue
             action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
-            context = [action] + (list(parse(r.answer)) if getattr(r, "answer", "") else [])
-            report = check([stmt], context, CORE if core is None else core)
+            names = getattr(r, "names", None) or {}
+            plain = parse_one("FACT: " + _plainly(full, names))
+            action = Statement(Pipeline((plain.pipeline.events[0],)), prefix="FACT")
+            context = [action] + (
+                list(parse(_plainly(r.answer, names))) if getattr(r, "answer", "") else []
+            )
+            report = check([plain], context, CORE if core is None else core)
             grounded += report.ok
             if ok:
                 benign_flagged += not report.ok
