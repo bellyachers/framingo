@@ -75,6 +75,7 @@ ASK, GOT = "<ask>", "<got>"
 
 
 _SLOT_KEY = re.compile(r"[a-z]+:")
+_MARK = re.compile(r"'[A-Za-z][A-Za-z0-9-]*")
 
 
 def detokenize(toks: list[str]) -> str:
@@ -175,6 +176,18 @@ def parts(r, vocab, form, ask: bool, handed: bool = False) -> list[tuple[list[in
     fin, fout = fields(form)
     prompt = [vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]]
     result = vocab.encode(getattr(r, fout)) + [vocab.stoi[EOS]]
+    if handed and ask:
+        # A derivation that stops part way. The model writes as far as the step
+        # that brings in a word it does not hold, hands over with ASK, and is
+        # given what that word is a kind of. That lookup is the one a parser
+        # cannot do in advance: the word did not exist until the model derived
+        # it. Loss is taken on what the model writes and on neither handover.
+        return [
+            (prompt + vocab.encode(r.answer) + [vocab.stoi[GOT]], False),
+            (vocab.encode(r.head) + [vocab.stoi[ASK]], True),
+            ((vocab.encode(r.handed) if r.handed else []) + [vocab.stoi[GOT]], False),
+            ((vocab.encode(r.tail) if r.tail else []) + [vocab.stoi[EOS]], True),
+        ]
     if handed:
         return [(prompt + vocab.encode(r.answer) + [vocab.stoi[GOT]], False), (result, True)]
     if not ask:
@@ -293,6 +306,44 @@ def generate_asking(model, vocab, rows, store, device, form: str, max_new: int =
     ):
         o["pred"], o["pred_scrambled"] = pred, scrambled
         del o["head"]
+    return out
+
+
+@torch.no_grad()
+def generate_stopping(model, vocab, rows, device, form: str, entries, max_new: int = 48):
+    """Let the model derive, look up what it derived, and let it finish.
+
+    The harness resolves whatever marked words the model's own output brings in
+    — not the ones the gold brings in. A model that derives the wrong thing is
+    told about the wrong thing and has to live with it, which is the failure
+    worth being able to see.
+    """
+    fin, _ = fields(form)
+    ask, got, eos = vocab.stoi[ASK], vocab.stoi[GOT], vocab.stoi[EOS]
+    prompts = [
+        [vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]]
+        + vocab.encode(r.answer) + [got]
+        for r in rows
+    ]
+    heads = _continue(model, vocab, prompts, device, ask, max_new)
+    out = []
+    for r, prompt, written in zip(rows, prompts, heads):
+        head = detokenize(vocab.decode(written))
+        given = set(_MARK.findall(getattr(r, fin) + " " + r.answer))
+        fresh = [w for w in dict.fromkeys(_MARK.findall(head)) if w not in given]
+        handed = " ".join(entries[w] for w in fresh if w in entries)
+        out.append(
+            {
+                "head": head,
+                "asked_about": fresh,
+                "handed": handed,
+                "prompt": prompt + written + [ask] + (vocab.encode(handed) if handed else []) + [got],
+            }
+        )
+    for o, written in zip(out, _continue(model, vocab, [o["prompt"] for o in out], device, eos, max_new)):
+        o["tail"] = detokenize(vocab.decode(written))
+        o["pred"] = (o["head"] + " " + o["tail"]).strip()
+        del o["prompt"]
     return out
 
 
@@ -542,6 +593,67 @@ def _scrambled(model, vocab, rows, device, form: str, seed: int) -> float:
     return correct / len(rows)
 
 
+def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
+    """Grade a derivation that stopped part way to look something up.
+
+    Context is the action, what the parser handed over, and what the model's own
+    stop brought back — not what the gold would have brought back. The core
+    holds the general rules and nothing about any name.
+    """
+    fin, _ = fields(form)
+    n = len(rows)
+    correct = parse_fail = grounded = asked_right = 0
+    fabricated = fabricated_flagged = omitted = benign_flagged = 0
+    examples, out = [], []
+    for r, got in zip(rows, fetched):
+        wanted = [w for w in dict.fromkeys(_MARK.findall(r.head)) if w not in
+                  set(_MARK.findall(getattr(r, fin) + " " + r.answer))]
+        asked_right += got["asked_about"] == wanted
+        full = f"{getattr(r, fin)} {got['pred']}"
+        out.append({k: got[k] for k in ("head", "handed", "tail", "pred", "asked_about")})
+        try:
+            ok = same_meaning(full, r.meaning)
+            stmt = parse_one("FACT: " + full)
+        except (ParseError, ValueError):
+            parse_fail += 1
+            fabricated += 1
+            fabricated_flagged += 1
+            continue
+        action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
+        context = [action] + list(parse(r.answer))
+        if got["handed"]:
+            context += list(parse(got["handed"]))
+        report = check([stmt], context, core)
+        grounded += report.ok
+        if ok:
+            benign_flagged += not report.ok
+        elif is_omission(full, r.meaning):
+            omitted += 1
+            benign_flagged += not report.ok
+        else:
+            fabricated += 1
+            fabricated_flagged += not report.ok
+            if len(examples) < 8:
+                examples.append({"input": getattr(r, fin), "handed": r.answer,
+                                 "asked_about": got["asked_about"], "got": got["handed"],
+                                 "pred": got["pred"], "gold": r.tagged_out, "grounded": report.ok})
+        correct += ok
+    benign = correct + omitted
+    return {
+        "n": n,
+        "accuracy": correct / n,
+        "asked_about_the_right_words": asked_right / n,
+        "parse_failures": parse_fail,
+        "grounding_rate": grounded / n,
+        "fabricated": fabricated,
+        "omitted": omitted,
+        "detection_rate": (fabricated_flagged / fabricated) if fabricated else None,
+        "false_alarm_rate": (benign_flagged / benign) if benign else None,
+        "examples": examples,
+        "predictions": out,
+    }
+
+
 def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
     fin, fout = fields(form)
     n = len(rows)
@@ -633,9 +745,12 @@ def main() -> None:
     rng = random.Random(args.seed)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
+    entries: dict[str, str] = {}
     if args.corpus == "basics":
         records = basics.build(n_train=args.train, seed=args.data_seed)
         store = None
+        for line in basics.dictionary().splitlines():
+            entries[line.split("tgt:")[1].split()[0]] = line
     elif args.corpus == "instantiation":
         assert args.ask, "the instantiation corpus is only meaningful with --ask"
         records = instantiation.build(
@@ -669,6 +784,7 @@ def main() -> None:
         # tokenised. Its embedding stays untrained, which is the honest
         # condition for a word a model has never met.
         texts += [r.answer for r in records] + [getattr(r, fout) for r in records]
+        texts += [r.head for r in records] + [r.handed for r in records] + [r.tail for r in records]
     if args.ask:
         # Every split's query and answer, because a model has to be able to
         # *read* what the store hands it. The embeddings of words that occur
@@ -715,7 +831,10 @@ def main() -> None:
     results = {"args": vars(args), "params": params, "train_seconds": round(time.time() - t0, 1)}
     for name in held:
         rows = splits[name]
-        if args.ask:
+        if args.ask and handed:
+            fetched = generate_stopping(model, vocab, rows, device, args.form, entries)
+            results[name] = evaluate_stopping(rows, fetched, args.form, parse(basics.core_rules()))
+        elif args.ask:
             fetched = generate_asking(model, vocab, rows, store, device, args.form, seed=args.seed)
             results[name] = evaluate_asking(rows, fetched, args.form)
         else:
