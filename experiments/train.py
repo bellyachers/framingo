@@ -46,6 +46,7 @@ import random
 import re
 import time
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 
 import torch
@@ -53,7 +54,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from framingo import ParseError, parse, parse_one
-from framingo import basics, instantiation, scaled
+from framingo import basics, instantiation, scaled, vessels
 from framingo.corpus import build
 from framingo.knowledge import Store
 from framingo.grounding import check, entails
@@ -329,10 +330,61 @@ def _lie_about(handed: str, classes: tuple[str, ...], rng) -> str:
     return " ".join(out)
 
 
+_ASKED_CLASS = re.compile(r"is:([A-Za-z][A-Za-z0-9-]*)")
+# A container's dictionary line names its material class; the question was
+# about the kind. `Clay-Vessel` answers a question about `Vessel`, and the
+# store has to know that much to know whether it was asked for what it holds.
+_KINDS = {
+    klass: (kind,)
+    for kind, materials in vessels.CONTAINERS.items()
+    for klass in materials
+}
+
+
+def resolve_marked(row, head: str, given: set[str], entries: dict) -> tuple[list, str]:
+    """What the harness hands back when the model stops at a word it derived.
+
+    Keyed by what the model can actually write. A marked word is renumbered per
+    example (`basics.normalise`), so a store keyed by the world's own names can
+    never answer a question about `'C`: the model asked correctly and was
+    handed nothing, every time, and then had to guess the rest of the chain.
+    What the store holds for this example is what its own handovers say, so the
+    entries are built from those. A word the model invented is in neither and
+    comes back empty, which is the behaviour that was wanted.
+    """
+    fresh = [w for w in dict.fromkeys(_MARK.findall(head)) if w not in given]
+    local = dict(entries)
+    for line in (row.answer + " " + row.handed).split("FACT: "):
+        if "tgt:'" in line:
+            local["'" + line.split("tgt:'")[1].split()[0]] = "FACT: " + line.strip()
+    return fresh, " ".join(local[w] for w in fresh if w in local)
+
+
+def resolve_query(row, head: str, given: set[str], entries: dict) -> tuple[list, str]:
+    """What the store hands back in answer to the model's own question.
+
+    The question is about a class, so what is read out of the model's text is
+    the class it named. The store holds the one container this situation
+    actually has: asking for a sack where a jug is standing gets nothing, which
+    is a fact about the world rather than a punishment, and it is also the one
+    condition under which the interesting question can be asked — what does a
+    derivation do when what it needs is not to be had.
+    """
+    asked = _ASKED_CLASS.findall(head)
+    if not asked:
+        return [], ""
+    wanted = asked[-1]
+    held = row.handed  # `FACT: State tgt:'C is:Clay-Vessel`
+    if not held:
+        return [wanted], ""
+    kind = held.split(" is:")[1].strip()
+    return [wanted], held if wanted in (kind, *_KINDS.get(kind, ())) else ""
+
+
 @torch.no_grad()
 def generate_stopping(
     model, vocab, rows, device, form: str, entries, max_new: int = 48,
-    lie_with: tuple[str, ...] = (), seed: int = 0,
+    lie_with: tuple[str, ...] = (), seed: int = 0, resolve=resolve_marked,
 ):
     """Let the model derive, look up what it derived, and let it finish.
 
@@ -358,20 +410,7 @@ def generate_stopping(
     for r, prompt, written in zip(rows, prompts, heads):
         head = detokenize(vocab.decode(written))
         given = set(_MARK.findall(getattr(r, fin) + " " + r.answer))
-        fresh = [w for w in dict.fromkeys(_MARK.findall(head)) if w not in given]
-        # Keyed by what the model can actually write. A marked word is
-        # renumbered per example (`basics.normalise`), so a store keyed by the
-        # world's own names can never answer a question about `'C`: the model
-        # asked correctly and was handed nothing, every time, and then had to
-        # guess the rest of the chain. What the store holds for this example is
-        # what its own handovers say, so the entries are built from those. A
-        # word the model invented is in neither and comes back empty, which is
-        # the behaviour that was wanted.
-        local = dict(entries)
-        for line in (r.answer + " " + r.handed).split("FACT: "):
-            if "tgt:'" in line:
-                local["'" + line.split("tgt:'")[1].split()[0]] = "FACT: " + line.strip()
-        handed = " ".join(local[w] for w in fresh if w in local)
+        fresh, handed = resolve(r, head, given, entries)
         lied = _lie_about(handed, lie_with, lying) if lie_with else ""
 
         def resume(answer: str) -> list[int]:
@@ -660,7 +699,17 @@ def _plainly(text: str, names: dict) -> str:
     return _MARK.sub(lambda m: names.get(m.group(0), m.group(0)), text)
 
 
-def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
+def _steps(text: str) -> tuple[str, ...]:
+    """The verbs of a stretch of pipeline, in order."""
+    out = []
+    for chunk in re.split(r"(?:->|!>|&>)", text):
+        words = chunk.replace("Result:", " ").split()
+        if words:
+            out.append(words[0])
+    return tuple(out)
+
+
+def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) -> dict:
     """Grade a derivation that stopped part way to look something up.
 
     Context is the action, what the parser handed over, and what the model's own
@@ -675,11 +724,16 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
     # back can say anything about whether the answer was used. Scoring the lie
     # over all of them would dilute it with examples that had nothing to lie
     # about, and a number diluted that way looks like robustness.
-    handed_back = lied_correct = lied_same = 0
+    handed_back = lied_correct = lied_same = lied_followed = 0
     examples, out = [], []
     for r, got in zip(rows, fetched):
-        wanted = [w for w in dict.fromkeys(_MARK.findall(r.head)) if w not in
-                  set(_MARK.findall(getattr(r, fin) + " " + r.answer))]
+        # What should have been asked about: the marked words the derivation
+        # brought in, or — where the question is about a class the sentence
+        # never mentioned — the class itself, which the record carries.
+        wanted = [r.query] if r.query else [
+            w for w in dict.fromkeys(_MARK.findall(r.head))
+            if w not in set(_MARK.findall(getattr(r, fin) + " " + r.answer))
+        ]
         asked_right += got["asked_about"] == wanted
         full = f"{getattr(r, fin)} {got['pred']}"
         out.append({k: got[k] for k in ("head", "handed", "tail", "pred", "asked_about")})
@@ -690,6 +744,15 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
                 lied_correct += same_meaning(f"{getattr(r, fin)} {got['pred_lied']}", r.meaning)
             except (ParseError, ValueError):
                 pass
+            # Moving is not the same as understanding. A derivation that broke
+            # when it was lied to read the answer; one that wrote the tail the
+            # lie *implies* read it and applied the rule. Only the second is
+            # the behaviour being claimed, so the two are counted apart.
+            if tails and got["lied"]:
+                state = got["lied"].rsplit(" is:", 1)[-1].split()[0]
+                if state in tails:
+                    written = _steps(got["pred_lied"][len(got["head"]):])
+                    lied_followed += written == tuple(tails[state])
         try:
             ok = same_meaning(full, r.meaning)
             stmt = parse_one("FACT: " + full)
@@ -740,6 +803,7 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core) -> dict:
         "handed_back": handed_back,
         "accuracy_when_handed_lies": (lied_correct / handed_back) if handed_back else None,
         "unmoved_by_the_lie": (lied_same / handed_back) if handed_back else None,
+        "followed_the_lie": (lied_followed / handed_back) if handed_back else None,
         "examples": examples,
         "predictions": out,
     }
@@ -821,9 +885,11 @@ def main() -> None:
     # it; the new arms, having nothing to reproduce, can afford to cut it.
     ap.add_argument("--max-draws", type=int, default=2_000_000)
     ap.add_argument("--n-invariant", type=int, default=500)
-    ap.add_argument("--corpus", choices=("world", "instantiation", "basics", "scaled"), default="world",
+    ap.add_argument("--corpus", choices=("world", "instantiation", "basics", "scaled", "vessels"),
+                    default="world",
                     help="`instantiation` has no physics in it: only applying the rule that comes back; "
-                         "`scaled` is the same world as `basics` at whatever size --classes asks for")
+                         "`scaled` is the same world as `basics` at whatever size --classes asks for; "
+                         "`vessels` needs something the sentence never mentions")
     ap.add_argument("--rules", type=int, default=150, help="instantiation: rules to train on")
     ap.add_argument("--classes", type=int, default=10, help="scaled: how many classes the world has")
     ap.add_argument("--verbs", type=int, default=4, help="scaled: how many verbs the world has")
@@ -847,6 +913,9 @@ def main() -> None:
     # Two runs on one GPU contend, and a sweep that is already going is worth
     # more than the speed of the run being added to it.
     ap.add_argument("--device", choices=("auto", "cpu", "mps"), default="auto")
+    ap.add_argument("--test", type=int, default=1000, help="rows per held-out split")
+    ap.add_argument("--empty-store", action="store_true",
+                    help="vessels: answer every question with nothing, and see what is written then")
     args = ap.parse_args()
 
     torch.manual_seed(args.seed)
@@ -857,6 +926,10 @@ def main() -> None:
     )
 
     entries: dict[str, str] = {}
+    # Whether the parser hands the dictionary over before the model writes
+    # anything. Set here, beside the choice of corpus that decides it, because
+    # building the vocabulary already needs to know.
+    handed = args.corpus in ("basics", "scaled", "vessels")
     # `basics` is one world written out by hand; `scaled` is the same shape
     # generated at a size. Everything downstream reads them through these three
     # — the dictionary the parser hands over, the core the grading checks
@@ -865,14 +938,40 @@ def main() -> None:
     core_text = basics.core_rules
     lie_with: tuple[str, ...] = ()
     name_classes: list[str] = []
-    if args.corpus in ("basics", "scaled"):
+    # What each state leads to, so that grading can ask not just whether the
+    # lie moved the derivation but whether it moved it to where the lie points.
+    tails: dict[str, tuple[str, ...]] = {}
+    if args.corpus == "vessels":
+        assert args.ask, "the vessels corpus is only meaningful with --ask"
+        records = vessels.build(
+            n_train=args.train, n_iid=args.test, n_unseen=args.test, seed=args.data_seed,
+        )
+        store = None
+        core_text = vessels.core_rules
+        for line in vessels.dictionary().splitlines():
+            entries[line.split("tgt:")[1].split()[0]] = line
+        # The lie is told with a container of the other material, so that it is
+        # a lie about the only thing the answer is good for.
+        lie_with = tuple(sorted({
+            klass for materials in vessels.CONTAINERS.values() for klass in materials
+        }))
+        name_classes = sorted(vessels.names())
+        tails = {
+            klass: vessels.TAIL[material]
+            for materials in vessels.CONTAINERS.values()
+            for klass, material in materials.items()
+        }
+    elif args.corpus in ("basics", "scaled"):
         if args.corpus == "scaled":
             world = scaled.make(
                 n_classes=args.classes, n_verbs=args.verbs,
                 names_per_class=args.names_per_class, seed=args.data_seed,
                 leak=args.leak, marked=args.marked,
             )
-            records = scaled.build(world, n_train=args.train, seed=args.data_seed)
+            records = scaled.build(
+                world, n_train=args.train, n_iid=args.test, n_unseen=args.test,
+                seed=args.data_seed,
+            )
             dictionary, states = scaled.dictionary(world), world.outcome_class.values()
             core_text = lambda: scaled.core_rules(world)  # noqa: E731
         else:
@@ -886,6 +985,7 @@ def main() -> None:
         # no outcome ever has would be detectable without reading it.
         lie_with = tuple(sorted(set(states)))
         name_classes = sorted(world.names if args.corpus == "scaled" else basics.NAMES)
+        tails = dict(world.tail if args.corpus == "scaled" else basics.TAIL)
     elif args.corpus == "instantiation":
         assert args.ask, "the instantiation corpus is only meaningful with --ask"
         records = instantiation.build(
@@ -914,7 +1014,7 @@ def main() -> None:
     # not read an answer even in principle. They are still never a training
     # target (`parts`), so this widens what can be read, not what is learnt.
     texts = [getattr(r, f) for r in splits["train"] for f in (fin, fout)]
-    if args.corpus in ("basics", "scaled"):
+    if handed:
         # Every split's handed-over lines, so a held-out name can at least be
         # tokenised. Its embedding stays untrained, which is the honest
         # condition for a word a model has never met.
@@ -937,7 +1037,6 @@ def main() -> None:
                     missing = [t for t in tokens(getattr(r, f)) if t not in vocab.stoi]
                     assert not missing, f"{name} uses tokens unseen in training: {missing}"
 
-    handed = args.corpus in ("basics", "scaled")
     max_len = args.max_len or (320 if args.ask else (192 if handed else 96))
     model = GPT(len(vocab.itos), args.d, args.layers, args.heads, max_len=max_len, dropout=args.dropout).to(device)
     params = sum(p.numel() for p in model.parameters())
@@ -967,11 +1066,16 @@ def main() -> None:
     for name in held:
         rows = splits[name]
         if args.ask and handed:
+            if args.empty_store:
+                # Every question answered with nothing. What a derivation does
+                # then is the question this whole arm exists for.
+                rows = [replace(r, handed="") for r in rows]
             fetched = generate_stopping(
                 model, vocab, rows, device, args.form, entries,
                 lie_with=lie_with, seed=args.seed,
+                resolve=resolve_query if args.corpus == "vessels" else resolve_marked,
             )
-            results[name] = evaluate_stopping(rows, fetched, args.form, parse(core_text()))
+            results[name] = evaluate_stopping(rows, fetched, args.form, parse(core_text()), tails)
         elif args.ask:
             fetched = generate_asking(model, vocab, rows, store, device, args.form, seed=args.seed)
             results[name] = evaluate_asking(rows, fetched, args.form)
@@ -990,6 +1094,7 @@ def main() -> None:
     arm = "" if args.invariant == "off" else f"-{args.invariant}"
     asking = "-ask" if args.ask else ""
     which = "" if args.corpus == "world" else f"-{args.corpus}"
+    which += "-empty" if args.empty_store else ""
     if args.corpus == "scaled":
         which += f"-c{args.classes}v{args.verbs}"
         which += f"-leak{args.leak:g}" if args.leak else ""
