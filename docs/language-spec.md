@@ -767,6 +767,22 @@ FACT: Action: Cut tgt:Apple tool:Knife -> Result: Become agt:It.Slice
 
 **JA** — 対象が1つしか存在しない自明な文脈において、名詞を重複記述する必要はない。`It` は直前の主要引数を直接指し示すポインタとして機能する。
 
+**EN** — Where nothing has yet been made the topic and the preceding event has no `tgt:`, `It` names its `agt:` instead. An event that *does* have a target leaves the topic where it was, so `Cut … -> Become agt:It.Slice -> Deform tgt:It` still deforms the thing that was cut. The case that forces the fallback is a chain, where one result becomes the premise of the next:
+
+```
+RULE: Action: Become agt:Every.Piece.Thing -> Result: Become agt:It.Swept
+```
+
+A division is written `Become agt:It.Slice` (chapter 3 §2) and so carries no target at all. Without the fallback, a rule keyed on such an event has no way to name the thing it has just been told about, and results cannot be chained. What would otherwise say it — `It<X>.Swept` — the grammar cannot write, because a concept's index follows its whole dot chain and nothing may come after it.
+
+**JA** — まだ何も主題になっておらず、かつ直前の事象が `tgt:` を持たない場合、`It` はその `agt:` を指す。`tgt:` を**持つ**事象は主題をそのままにするので、`Cut … -> Become agt:It.Slice -> Deform tgt:It` は依然として切られた物を変形させる。この退避を要求するのは**連鎖**の場合であり、一つの結果が次の前提になるときである。
+
+```
+RULE: Action: Become agt:Every.Piece.Thing -> Result: Become agt:It.Swept
+```
+
+分割は `Become agt:It.Slice` と書かれ（第3章 §2）、対象を一切持たない。この退避がなければ、そうした事象を前提とする規則は、たった今告げられたものを名指す手段を持たず、**結果を連鎖させられない。** それを言うはずの `It<X>.Swept` は文法が書けない。概念の添字は点連鎖全体の後に来るため、その後ろには何も置けないからである。
+
 ### 5.2 Crossing Multiple Objects and Indexed Pronouns / 複数対象の交錯とインデックス付き代名詞（Indexed Pronouns）
 
 **EN** — When several objects appear at once and interact, natural language's "it" and "they" produce fatal collisions of referent (the Winograd Schema problem).

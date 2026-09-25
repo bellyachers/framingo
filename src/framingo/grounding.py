@@ -196,7 +196,20 @@ def _resolve_value(value: object, antecedent: Concept | None, indexed: dict[str,
 
 
 def resolve_events(events: Iterable[Event]) -> list[Event]:
-    """Replace ``It`` with the target of the nearest preceding event."""
+    """Replace ``It`` with what the nearest preceding event is about.
+
+    Its target; or, where nothing has been made the topic yet, the agent of an
+    event that has no target. The fallback is what lets
+    one result be the premise of the next: a division is written `Become
+    agt:X.Piece` (spec ch.3 §2), which has no target at all, so a rule keyed on
+    that event had no way to name the thing it had just been told about. The
+    alternative was `It<X>.Swept`, which says exactly what is meant and which
+    the grammar cannot write, since a concept's index comes after its whole dot
+    chain and nothing may follow it.
+
+    There is no ambiguity to resolve: an event with a target has one thing it
+    is about, and `Become` has exactly one argument.
+    """
     antecedent: Concept | None = None
     indexed: dict[str, Concept] = {}
     out = []
@@ -210,6 +223,15 @@ def resolve_events(events: Iterable[Event]) -> list[Event]:
         targets = [v for v in resolved.get("tgt") if isinstance(v, Concept)]
         if targets:
             antecedent = targets[0]
+        elif antecedent is None:
+            # Nothing has been made the topic yet, so an event with only an
+            # agent makes its agent the topic. An event that *does* have a
+            # target leaves the topic where it was, which is what keeps
+            # `Cut … -> Become agt:It.Slice -> Deform tgt:It` deforming the
+            # thing that was cut rather than the slices it did not become.
+            agents = [v for v in resolved.get("agt") if isinstance(v, Concept)]
+            if agents:
+                antecedent = agents[0]
     return out
 
 
