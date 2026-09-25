@@ -188,6 +188,23 @@ The same rule covers a word the model *derives*. Drop a vessel and it becomes
 advance. It is looked up when it appears, for the same reason and by the same
 test. **Nothing has to notice that it is stuck.**
 
+And it is looked up although it need not be. In a deterministic world whose
+input is complete, every intermediate is a function of the input, so a lookup
+mid-derivation is never *necessary* — necessity is a property of capacity, not
+of structure. Measured on a world where every consequence has to be fetched: a
+model that cannot fetch scores **1.000** all the same, having learnt the
+composite; a model that can fetch scores **1.000** and collapses to **0.000**
+the moment the answer it asked for is a lie. It is not that the shortcut is
+unavailable. It is that a model arranged to ask, asks.
+
+The two arms differ in one other number, and it is the point of the exercise.
+The model that cannot fetch grounds **0.000** of its answers: every one of them
+is right and not one can be traced. The model that fetches grounds **1.000**.
+**Being right and being able to show why come apart completely**, and the
+Grounding Constraint is what tells them apart — which is what it is for. (Of
+the correct-but-ungrounded outputs, asked a second time with the dictionary in
+front of them, **100%** then ground: the verifier was right about every one.)
+
 > A consequence worth stating. If what a model may emit is limited to the
 > instinct vocabulary plus the words handed to it, then inventing a name is not
 > merely detectable — it is **impossible**. A model that holds no names cannot
@@ -220,6 +237,21 @@ test. **Nothing has to notice that it is stuck.**
 同じ規則が、モデルが**導いた**語にも及ぶ。容器を落とせば `'Shard` になる ——
 印が付いており、保持しておらず、**入力のどこにも無かったので事前に引きようがない。**
 現れた時点で引く。同じ理由、同じ判定による。**「行き詰まった」と気づく必要がどこにもない。**
+
+そして、**引く必要が無くても引く。** 決定論的で入力が完全な世界では、あらゆる中間は
+入力の関数であり、導出中に引くことは**原理的に必要にならない** ——
+必要性は構造の性質ではなく容量の性質である。すべての帰結を引かねばならない世界で
+測った結果：**引けないモデルも 1.000 を取る**（合成を覚えた）。
+**引けるモデルも 1.000 を取り、訊いた答えが嘘だった瞬間に 0.000 へ崩れる。**
+近道が無いのではない。**そう組まれたモデルは、訊く。**
+
+二つのアームはもう一つの数字で違っており、そここそが要点である。
+**引けないモデルの接地率は 0.000。** 答えは全部合っていて、一つも辿れない。
+**引くモデルの接地率は 1.000。**
+**正しいことと、なぜ正しいかを示せることは、完全に分離する。**
+接地制約はその二つを分ける装置であり、それが存在理由である。
+（正しくて接地しなかった出力を、辞書を文脈に入れて訊き直すと **100%** が接地する。
+**検証器は一件も間違えていない。**）
 
 > 述べておくべき帰結。モデルが出力しうる語を「本能語彙 + 渡された語」に限るなら、
 > **名前の捏造は検出可能になるのではなく、不可能になる。** 名前を一つも持たない
