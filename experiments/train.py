@@ -861,7 +861,7 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
     }
 
 
-def evaluate(rows, predictions: list[str], form: str, core=None, book: str = "") -> dict:
+def evaluate(rows, predictions: list[str], form: str, core=None, book: dict | None = None) -> dict:
     """Grade predictions, and where a correct one fails to ground, say why.
 
     `false_alarm_rate` is the share of benign outputs the verifier flags, and
@@ -874,19 +874,26 @@ def evaluate(rows, predictions: list[str], form: str, core=None, book: str = "")
     alarms would report the verifier working as the verifier failing.
 
     So the two are separated by asking a second question of each one: would it
-    have grounded had the dictionary been in the context? If it would, the flag
+    have grounded had **the words it used** been fetched? If it would, the flag
     was about a lookup that never happened, and it is a true finding. If it
     would not, something in the core or the checker cannot derive a correct
     derivation, and that is a defect — of which three have been found so far,
     every one by measuring rather than by reading output. `book` is what makes
     the second question askable; without it the two stay added together.
+
+    Only the words the output names are added, not the whole dictionary. That
+    is the sharper question — a lookup the derivation would actually have made
+    — and it is also the only affordable one: at 160 classes the dictionary is
+    1,600 lines, every output in a non-fetching arm is flagged, and rebuilding
+    a knowledge base of that size five hundred times over turns an evaluation
+    into an afternoon.
     """
     fin, fout = fields(form)
     n = len(rows)
     correct = parse_fail = grounded = 0
     fabricated = fabricated_flagged = omitted = benign_flagged = 0
     unfetched = underivable = 0
-    whole = list(parse(book)) if book else []
+    book = book or {}
     examples, predictions_out = [], []
     for r, pred in zip(rows, predictions):
         full = f"{getattr(r, fin)} {pred}"
@@ -912,23 +919,24 @@ def evaluate(rows, predictions: list[str], form: str, core=None, book: str = "")
             grounded += report.ok
 
             def split() -> None:
-                # the same claim, with everything the dictionary holds in front
-                # of it. Grounding now means the flag was about a lookup that
+                # the same claim, with the dictionary's line for each word it
+                # names. Grounding now means the flag was about a lookup that
                 # did not happen.
                 nonlocal unfetched, underivable
-                if check([plain], context + whole, rules).ok:
+                lines = [book[w] for w in set(_MARK.findall(_plainly(full, names))) if w in book]
+                if check([plain], context + list(parse("\n".join(lines))), rules).ok:
                     unfetched += 1
                 else:
                     underivable += 1
 
             if ok:
                 benign_flagged += not report.ok
-                if not report.ok and whole:
+                if not report.ok and book:
                     split()
             elif is_omission(full, r.meaning):
                 omitted += 1
                 benign_flagged += not report.ok
-                if not report.ok and whole:
+                if not report.ok and book:
                     split()
             else:
                 fabricated += 1
@@ -951,7 +959,7 @@ def evaluate(rows, predictions: list[str], form: str, core=None, book: str = "")
             detection_rate=(fabricated_flagged / fabricated) if fabricated else None,
             false_alarm_rate=(benign_flagged / benign) if benign else None,
         )
-        if whole:
+        if book:
             result.update(
                 # right, but not traceable, because the word was never fetched.
                 # The verifier is correct and the name above is not.
@@ -1179,7 +1187,7 @@ def main() -> None:
             core = parse(core_text()) if handed else None
             results[name] = evaluate(
                 rows, preds, args.form, core,
-                book="\n".join(entries.values()) if handed else "",
+                book=entries if handed else None,
             )
             if handed:
                 results[name]["accuracy_scrambled"] = _scrambled(
