@@ -13,8 +13,12 @@
 #
 #   the no-ask arm falls first, and there is a size where one works and the
 #   other does not
-#       -> that gap is what externalising knowledge buys, in parameters. It is
-#          the first real number for charter proposition 1.
+#       -> READ `run-epochs.sh` BEFORE BELIEVING THIS. It happened — the arms
+#          part between 100k and 166k parameters at twenty epochs — and the
+#          epoch control then showed the gap was optimisation, not capacity:
+#          the same no-ask arm reaches 0.994 at sixty epochs. What this sweep
+#          measures is how fast each route is learned under one budget, which
+#          is not charter proposition 1.
 #   both fall at the same size
 #       -> what limits this model is not the table it has to hold, and
 #          proposition 1 does not follow from anything measured here.
