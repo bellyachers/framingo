@@ -6,6 +6,13 @@ The model sees an action and must write what follows (``-> Fall tgt:... ``).
 It is trained from scratch: it has never seen natural language, and it holds
 no knowledge beyond this corpus.
 
+``--invariant holdout`` adds the proposition-4 split (corpus.py): the law
+"a division destroys structural modifiers and conserves intrinsic ones" is
+demonstrated in training only under ``Cut``, and the split asks for it under
+``Drop``/``Push``. ``--invariant control`` is the same corpus with that shape
+also present in training, and is the ceiling the holdout arm is read against:
+without it, failure to transfer cannot be told apart from a hard split.
+
 Evaluation per held-out split:
 - accuracy: the predicted meaning equals the world's, order-invariantly for
   the role-tagged form (via the parser), by exact string for the
@@ -15,8 +22,10 @@ Evaluation per held-out split:
   * grounding rate: share of predictions that satisfy the Grounding
     Constraint (charter §11.4 c);
   * wrong predictions are split into fabrications (some predicted event
-    is not part of the true result, even allowing dropped slots) and
-    omissions (every predicted event is true, but something is missing).
+    is not part of the true result, even allowing dropped slots, or the
+    events are true but sequenced in an order the world did not put them
+    in) and omissions (every predicted event is true and in order, but
+    something is missing).
     Only fabrications are hallucinations in the charter's sense; the
     Grounding Constraint accepts omissions by design (abstraction);
   * detection rate: share of fabrications the checker flags (charter ch.8
@@ -34,6 +43,7 @@ import argparse
 import json
 import math
 import random
+import re
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -43,26 +53,46 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from framingo import ParseError, parse, parse_one
+from framingo import basics, instantiation
 from framingo.corpus import build
+from framingo.knowledge import Store
 from framingo.grounding import check, entails
 from framingo.render import tokens
 from framingo.syntax import Concept, Pipeline, Statement
 from framingo.world import core_rules
 
 PAD, BOS, SEP, EOS = "<pad>", "<bos>", "<sep>", "<eos>"
+# `--ask`: the model hands over with ASK once its query is written, and the
+# harness hands back with GOT once the store has answered. The model writes
+# what lies between BOS..ASK and GOT..EOS; the stretch between ASK and GOT is
+# the store's, and no loss is taken on it. Training the model to predict the
+# answer would be putting the knowledge back into the weights, which is the
+# one thing this arrangement exists to avoid.
+ASK, GOT = "<ask>", "<got>"
 
 
 # -- text <-> tokens ---------------------------------------------------------
 
 
+_SLOT_KEY = re.compile(r"[a-z]+:")
+
+
 def detokenize(toks: list[str]) -> str:
+    """Put back together what `render.tokens` took apart.
+
+    Only a lowercase slot key glues to what follows it, because that is the
+    only thing `tokens` splits off (`agt:Red.Apple` -> `agt:` `Red` `.`
+    `Apple`). A statement's own labels end in a colon too — `QUERY:`,
+    `Action:`, `Result:` — and gluing after those would run a query together
+    into `QUERY:Action:Cut`, which no longer parses.
+    """
     out: list[str] = []
     glue = False
     for t in toks:
         if t == ".":
             out[-1] += "."
             glue = True
-        elif glue or (out and out[-1].endswith(":") and not out[-1].endswith("->")):
+        elif glue or (out and _SLOT_KEY.fullmatch(out[-1])):
             out[-1] += t
             glue = False
         else:
@@ -73,7 +103,7 @@ def detokenize(toks: list[str]) -> str:
 class Vocab:
     def __init__(self, texts: list[str]) -> None:
         words = sorted({t for text in texts for t in tokens(text)})
-        self.itos = [PAD, BOS, SEP, EOS] + words
+        self.itos = [PAD, BOS, SEP, EOS, ASK, GOT] + words
         self.stoi = {t: i for i, t in enumerate(self.itos)}
 
     def encode(self, text: str) -> list[int]:
@@ -126,23 +156,53 @@ def fields(form: str) -> tuple[str, str]:
     return (f"{form}_in", f"{form}_out")
 
 
-def make_batches(rows, vocab, form, batch_size, rng):
+def held_names(splits) -> list[str]:
+    order = ("test_iid", "test_role", "test_combo", "test_invariant", "test_unseen")
+    named = [n for n in order if splits[n]]
+    return named + sorted(k for k in splits if k.startswith("test") and k not in order)
+
+
+def parts(r, vocab, form, ask: bool, handed: bool = False) -> list[tuple[list[int], bool]]:
+    """The sequence as stretches, each marked with whether the model writes it.
+
+    Plainly there are two: the action, then the result. With ``--ask`` there are
+    four, and the store's answer is the one stretch the model is not asked to
+    predict. ``handed`` is the arrangement the marked vocabulary makes possible
+    (spec ch.3 §4bis): the parser has already fetched what every marked word
+    means, so there is no query to write and no decision to learn — the lookup
+    is simply part of what the model is given.
+    """
     fin, fout = fields(form)
-    seqs = []
-    for r in rows:
-        prompt = [vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]]
-        target = vocab.encode(getattr(r, fout)) + [vocab.stoi[EOS]]
-        seqs.append((prompt, target))
+    prompt = [vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]]
+    result = vocab.encode(getattr(r, fout)) + [vocab.stoi[EOS]]
+    if handed:
+        return [(prompt + vocab.encode(r.answer) + [vocab.stoi[GOT]], False), (result, True)]
+    if not ask:
+        return [(prompt, False), (result, True)]
+    return [
+        (prompt, False),
+        (vocab.encode(r.query) + [vocab.stoi[ASK]], True),
+        (vocab.encode(r.answer) + [vocab.stoi[GOT]], False),
+        (result, True),
+    ]
+
+
+def make_batches(rows, vocab, form, batch_size, rng, ask: bool = False, handed: bool = False):
+    seqs = [parts(r, vocab, form, ask, handed) for r in rows]
     rng.shuffle(seqs)
     for i in range(0, len(seqs), batch_size):
         chunk = seqs[i : i + batch_size]
-        n = max(len(p) + len(t) for p, t in chunk)
+        n = max(sum(len(piece) for piece, _ in s) for s in chunk)
         ids = torch.full((len(chunk), n), vocab.stoi[PAD])
         loss_mask = torch.zeros((len(chunk), n), dtype=torch.bool)
-        for j, (p, t) in enumerate(chunk):
-            seq = p + t
+        for j, stretches in enumerate(chunk):
+            seq: list[int] = []
+            for piece, ours in stretches:
+                if ours:
+                    # a token at index t is predicted from position t-1
+                    loss_mask[j, len(seq) - 1 : len(seq) + len(piece) - 1] = True
+                seq += piece
             ids[j, : len(seq)] = torch.tensor(seq)
-            loss_mask[j, len(p) - 1 : len(seq) - 1] = True  # predict target tokens only
         yield ids, loss_mask
 
 
@@ -177,32 +237,169 @@ def generate(model, vocab, prompts: list[list[int]], device, max_new: int = 48) 
     return out
 
 
+@torch.no_grad()
+def generate_asking(model, vocab, rows, store, device, form: str, max_new: int = 64, seed: int = 0):
+    """Let the model ask, run *its* question, let it finish — then do it again
+    with the wrong answer.
+
+    The store answers the query the model actually wrote, not the one it should
+    have written. A model that asks the wrong question gets the wrong answer
+    and has to live with it, which is the failure mode worth being able to see;
+    handing back the right answer regardless would measure only the second half
+    of the task.
+
+    **The second pass is the control this experiment cannot do without.** The
+    corpus still pairs an action with its result, so nothing stops a model from
+    memorising the physics and treating the answer as scenery: it would then
+    score perfectly while retrieving nothing, and every number here would say
+    only that the model had learnt the world, which was never in doubt. So each
+    prediction is made a second time against another row's answer — real rules,
+    for the wrong action, so that what is being tested is whether the answer is
+    read at all and not whether the model survives noise. If accuracy holds up
+    when the answer is wrong, the retrieval is decorative.
+    """
+    fin, _ = fields(form)
+    ask, got, eos = vocab.stoi[ASK], vocab.stoi[GOT], vocab.stoi[EOS]
+    prompts = [[vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]] for r in rows]
+
+    asked = _continue(model, vocab, prompts, device, ask, max_new)
+    out = []
+    for prompt, written in zip(prompts, asked):
+        text = detokenize(vocab.decode(written))
+        try:
+            statements, failed = list(store.answer(parse_one(text)).statements), False
+        except (ParseError, ValueError):
+            statements, failed = [], True
+        out.append({"query": text, "query_failed": failed, "statements": statements,
+                    "head": prompt + written + [ask]})
+
+    # another row's answer, never a row's own
+    order = list(range(len(out)))
+    random.Random(seed).shuffle(order)
+    order = [j if out[j]["statements"] != out[i]["statements"] else (i + 1) % len(out)
+             for i, j in enumerate(order)]
+
+    def finish(statements_for):
+        heads = [
+            o["head"] + vocab.encode(" ".join(str(s) for s in statements_for(i))) + [got]
+            if statements_for(i)
+            else o["head"] + [got]
+            for i, o in enumerate(out)
+        ]
+        return [detokenize(vocab.decode(w)) for w in _continue(model, vocab, heads, device, eos, max_new)]
+
+    for o, pred, scrambled in zip(
+        out, finish(lambda i: out[i]["statements"]), finish(lambda i: out[order[i]]["statements"])
+    ):
+        o["pred"], o["pred_scrambled"] = pred, scrambled
+        del o["head"]
+    return out
+
+
+@torch.no_grad()
+def _continue(model, vocab, prompts: list[list[int]], device, stop: int, max_new: int) -> list[list[int]]:
+    """Greedy decoding up to ``stop``, which is not included in what is returned."""
+    model.eval()
+    by_len: dict[int, list[int]] = defaultdict(list)
+    for i, p in enumerate(prompts):
+        by_len[len(p)].append(i)
+    out: list[list[int]] = [[] for _ in prompts]
+    for _, idx in by_len.items():
+        for s in range(0, len(idx), 128):
+            group = idx[s : s + 128]
+            ids = torch.tensor([prompts[i] for i in group], device=device)
+            done = torch.zeros(len(group), dtype=torch.bool, device=device)
+            for _ in range(max_new):
+                if ids.shape[1] >= model.max_len:
+                    break
+                nxt = model(ids)[:, -1].argmax(-1)
+                nxt = torch.where(done, torch.full_like(nxt, stop), nxt)
+                ids = torch.cat([ids, nxt[:, None]], 1)
+                done |= nxt == stop
+                if done.all():
+                    break
+            for row, i in zip(ids.tolist(), group):
+                gen = row[len(prompts[i]) :]
+                out[i] = gen[: gen.index(stop)] if stop in gen else gen
+    return out
+
+
 # -- evaluation --------------------------------------------------------------
 
 CORE = parse(core_rules())
 
 
-def same_meaning(pred: str, gold: str) -> bool:
-    a, b = parse_one(pred).pipeline, parse_one(gold).pipeline
-    return a.connectors == b.connectors and [e.slots for e in a.events] == [e.slots for e in b.events] and [
-        e.verb for e in a.events
-    ] == [e.verb for e in b.events]
+def _groups(text: str) -> list[tuple[str, list]]:
+    """A result read as a sequence of groups of events that hold at once.
 
-
-def _linked(text: str) -> list[tuple[str, object]]:
-    """Each event paired with the connector that introduces it."""
+    `&>` joins its two sides into one group (spec ch.4 §1.3): they hold at
+    once and neither brings the other about, so which is written first says
+    nothing. Everything the graders below ask is asked of groups, never of
+    positions, which is what stops the carrier and the carried arriving in
+    the other order from counting as a mistake. The connector that opens a
+    group is the group's, and it is what says how the group stands to the one
+    before it.
+    """
     p = parse_one(text).pipeline
-    return list(zip(("->",) + p.connectors, p.events))
+    groups: list[tuple[str, list]] = []
+    for connector, event in zip(("->",) + p.connectors, p.events):
+        if connector == "&>" and groups:
+            groups[-1][1].append(event)
+        else:
+            groups.append((connector, [event]))
+    return groups
+
+
+def _forward(connector: str) -> str:
+    """`&>` and `->` both say the group happened; only `!>` says it did not.
+
+    They are not the same claim — `->` asserts causation where `&>` asserts
+    none — but the checker accepts either where the core groups the events,
+    because skipping a link is permitted and so `->` is read as "not before".
+    The grader has to agree with the checker or a fabrication it counts is
+    one the checker will never flag, and the detection rate falls for a
+    disagreement between two graders rather than for anything a model did.
+    """
+    return "->" if connector == "&>" else connector
+
+
+def same_meaning(pred: str, gold: str) -> bool:
+    """One meaning told two ways is one meaning.
+
+    Slot order already carries nothing (spec ch.2 §2, and `Event.__eq__`
+    follows), and neither does the order inside a group. The connector that
+    opens each group does count here, unlike in `is_omission`: writing `->`
+    where the world says `&>` is not the world's meaning, even though it
+    asserts nothing the core refuses.
+    """
+    a, b = _groups(pred), _groups(gold)
+    return len(a) == len(b) and all(
+        ac == bc and sorted(map(str, ae)) == sorted(map(str, be))
+        for (ac, ae), (bc, be) in zip(a, b)
+    )
 
 
 def is_omission(pred: str, gold: str) -> bool:
-    """Every predicted event is a true event with at most some slots left out.
+    """Every predicted event is a true event, in the true order, with at most
+    some slots left out.
 
     The connector counts: claiming with ``->`` what the world prevented
-    (``!>``) is a fabrication, not an omission.
+    (``!>``) is a fabrication, not an omission. So does the order, for the
+    same reason: ``->`` asserts that the left event brought the right one
+    about (spec ch.4 §1.1), so a result read back to front — the vase
+    shattered and then fell — claims a causal chain that never held, and
+    that is a fabrication however true its events are one by one.
+
+    Dropping an event is still an omission: the predicted groups need only
+    occur in the gold's order, not consecutively, since ``A -> B -> C``
+    licenses the coarser ``A -> C``. Nor need the match be one-to-one: a
+    model that claims the same true event twice fabricates no order, and the
+    grader leaves that (separate) flaw where it was.
     """
-    gold_events = _linked(gold)
-    nouns = frozenset(c.segments[-1] for _, g in gold_events for c in _slot_concepts(g))
+    gold_groups = _groups(gold)
+    nouns = frozenset(
+        c.segments[-1] for _, events in gold_groups for g in events for c in _slot_concepts(g)
+    )
 
     def weaker(p, g) -> bool:
         # every predicted slot is a gold slot, possibly with modifiers
@@ -213,14 +410,139 @@ def is_omission(pred: str, gold: str) -> bool:
             for k, v in p.slots
         )
 
-    return all(any(pc == gc and weaker(p, g) for gc, g in gold_events) for pc, p in _linked(pred))
+    # Walk the gold's groups forwards, never backwards: matching each
+    # predicted event to the earliest group it can leaves the longest run of
+    # gold for what follows, so if any reading of the prediction respects the
+    # order, this one finds it. Within a group there is no order to respect.
+    at = 0
+    for connector, events in _groups(pred):
+        for event in events:
+            found = next(
+                (
+                    i
+                    for i in range(at, len(gold_groups))
+                    if _forward(gold_groups[i][0]) == _forward(connector)
+                    and any(weaker(event, g) for g in gold_groups[i][1])
+                ),
+                None,
+            )
+            if found is None:
+                return False
+            at = found
+    return True
 
 
 def _slot_concepts(event) -> list[Concept]:
     return [v for _, v in event.slots if isinstance(v, Concept)]
 
 
-def evaluate(rows, predictions: list[str], form: str) -> dict:
+def evaluate_asking(rows, fetched: list[dict], form: str) -> dict:
+    """Grade a model that fetched its own knowledge, against an empty core.
+
+    The context is the action and *what the model's own query brought back*,
+    and the core holds nothing. So the Grounding Constraint is being applied
+    exactly as charter chapter 3 arranges it: an output is grounded when it
+    traces to what was retrieved, and a model that fetched the wrong thing
+    cannot be saved by a core that knew better.
+    """
+    fin, _ = fields(form)
+    n = len(rows)
+    correct = parse_fail = grounded = correct_scrambled = 0
+    query_exact = query_failed = answer_empty = 0
+    fabricated = fabricated_flagged = omitted = benign_flagged = 0
+    examples, out = [], []
+    for r, got in zip(rows, fetched):
+        query_exact += got["query"] == r.query
+        query_failed += got["query_failed"]
+        answer_empty += not got["statements"]
+        try:
+            correct_scrambled += same_meaning(
+                f"{getattr(r, fin)} {got['pred_scrambled']}", r.meaning
+            )
+        except (ParseError, ValueError):
+            pass
+        full = f"{getattr(r, fin)} {got['pred']}"
+        out.append({k: got[k] for k in ("query", "pred", "pred_scrambled")})
+        try:
+            ok = same_meaning(full, r.meaning)
+            stmt = parse_one("FACT: " + full)
+        except (ParseError, ValueError):
+            parse_fail += 1
+            fabricated += 1
+            fabricated_flagged += 1
+            continue
+        action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
+        report = check([stmt], [action] + list(got["statements"]), ())
+        grounded += report.ok
+        if ok:
+            benign_flagged += not report.ok
+        elif is_omission(full, r.meaning):
+            omitted += 1
+            benign_flagged += not report.ok
+        else:
+            fabricated += 1
+            fabricated_flagged += not report.ok
+            if len(examples) < 8:
+                examples.append(
+                    {"input": getattr(r, fin), "query": got["query"], "asked_for": r.query,
+                     "pred": got["pred"], "gold": r.tagged_out, "grounded": report.ok}
+                )
+        correct += ok
+    benign = correct + omitted
+    return {
+        "n": n,
+        "accuracy": correct / n,
+        # the control: the same model, answered about a different action. Near
+        # the real accuracy means the answer was not being read.
+        "accuracy_scrambled": correct_scrambled / n,
+        "query_exact_rate": query_exact / n,
+        "query_parse_failures": query_failed,
+        "empty_answers": answer_empty,
+        "parse_failures": parse_fail,
+        "grounding_rate": grounded / n,
+        "fabricated": fabricated,
+        "omitted": omitted,
+        "detection_rate": (fabricated_flagged / fabricated) if fabricated else None,
+        "false_alarm_rate": (benign_flagged / benign) if benign else None,
+        "examples": examples,
+        "predictions": out,
+    }
+
+
+def _scrambled(model, vocab, rows, device, form: str, seed: int) -> float:
+    """Accuracy when the dictionary is made to lie about every marked word.
+
+    The control this corpus cannot do without. A name the model has been
+    trained on could have had its class learnt along with it, and a model that
+    had done so would score perfectly while consulting nothing — every number
+    here would then say only that it had memorised the names. So each
+    prediction is made again with every `is:` replaced by a class the word does
+    not belong to. Accuracy that survives that is accuracy that was never using
+    the lookup.
+    """
+    rng = random.Random(f"{seed}-scramble")
+    classes = sorted(basics.NAMES)
+    prompts = []
+    for r in rows:
+        lied = []
+        for line in r.answer.split("FACT: "):
+            if not line.strip():
+                continue
+            word, klass = line.split("tgt:")[1].split(" is:")
+            wrong = rng.choice([c for c in classes if c != klass.strip()])
+            lied.append(f"FACT: State tgt:{word} is:{wrong}")
+        prompt = [vocab.stoi[BOS]] + vocab.encode(getattr(r, fields(form)[0])) + [vocab.stoi[SEP]]
+        prompts.append(prompt + vocab.encode(" ".join(lied)) + [vocab.stoi[GOT]])
+    correct = 0
+    for r, generated in zip(rows, generate(model, vocab, prompts, device)):
+        try:
+            correct += same_meaning(f"{getattr(r, fields(form)[0])} {detokenize(generated)}", r.meaning)
+        except (ParseError, ValueError):
+            pass
+    return correct / len(rows)
+
+
+def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
     fin, fout = fields(form)
     n = len(rows)
     correct = parse_fail = grounded = 0
@@ -239,7 +561,8 @@ def evaluate(rows, predictions: list[str], form: str) -> dict:
                 fabricated_flagged += 1  # an unparseable output is rejected outright
                 continue
             action = Statement(Pipeline((stmt.pipeline.events[0],)), prefix="FACT")
-            report = check([stmt], [action], CORE)
+            context = [action] + (list(parse(r.answer)) if getattr(r, "answer", "") else [])
+            report = check([stmt], context, CORE if core is None else core)
             grounded += report.ok
             if ok:
                 benign_flagged += not report.ok
@@ -281,6 +604,21 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--data-seed", type=int, default=0)
     ap.add_argument("--train", type=int, default=20000)
+    ap.add_argument("--invariant", choices=("off", "holdout", "control"), default="off")
+    # The draw limit is reachable only in principle: `test_role` holds at most
+    # 120 distinct meanings (4 agents x 5 destinations x 6 locations), fewer
+    # than `n_held`, so the builder's completion test never fires and the loop
+    # always runs to this bound. Lowering it changes the random stream and so
+    # the corpus, which is why the default stays where the published runs left
+    # it; the new arms, having nothing to reproduce, can afford to cut it.
+    ap.add_argument("--max-draws", type=int, default=2_000_000)
+    ap.add_argument("--n-invariant", type=int, default=500)
+    ap.add_argument("--corpus", choices=("world", "instantiation", "basics"), default="world",
+                    help="`instantiation` has no physics in it: only applying the rule that comes back")
+    ap.add_argument("--rules", type=int, default=150, help="instantiation: rules to train on")
+    ap.add_argument("--ask", action="store_true",
+                    help="the model fetches its own knowledge and the core is graded empty")
+    ap.add_argument("--max-len", type=int, default=0, help="0 = 96, or 320 when asking")
     ap.add_argument("--epochs", type=int, default=30)
     ap.add_argument("--batch", type=int, default=128)
     ap.add_argument("--d", type=int, default=128)
@@ -295,19 +633,62 @@ def main() -> None:
     rng = random.Random(args.seed)
     device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
 
-    records = build(n_train=args.train, n_iid=2000, n_held=1000, seed=args.data_seed)
+    if args.corpus == "basics":
+        records = basics.build(n_train=args.train, seed=args.data_seed)
+        store = None
+    elif args.corpus == "instantiation":
+        assert args.ask, "the instantiation corpus is only meaningful with --ask"
+        records = instantiation.build(
+            n_rules=args.rules,
+            facts_per_rule=max(1, args.train // args.rules),
+            seed=args.data_seed,
+        )
+        store = instantiation.store_of(records)
+    else:
+        records = build(
+            n_train=args.train,
+            n_iid=2000,
+            n_held=1000,
+            seed=args.data_seed,
+            max_draws=args.max_draws,
+            invariant=args.invariant,
+            n_invariant=args.n_invariant,
+            ask=args.ask,
+        )
+        store = Store(parse(core_rules()), "core") if args.ask else None
     splits: dict[str, list] = defaultdict(list)
     for r in records:
         splits[r.split].append(r)
     fin, fout = fields(args.form)
-    vocab = Vocab([getattr(r, f) for r in splits["train"] for f in (fin, fout)])
-    for name in ("test_iid", "test_role", "test_combo"):
-        for r in splits[name]:
-            for f in (fin, fout):
-                missing = [t for t in tokens(getattr(r, f)) if t not in vocab.stoi]
-                assert not missing, f"{name} uses tokens unseen in training: {missing}"
+    # The store's own words have to be in the vocabulary, or the model could
+    # not read an answer even in principle. They are still never a training
+    # target (`parts`), so this widens what can be read, not what is learnt.
+    texts = [getattr(r, f) for r in splits["train"] for f in (fin, fout)]
+    if args.corpus == "basics":
+        # Every split's handed-over lines, so a held-out name can at least be
+        # tokenised. Its embedding stays untrained, which is the honest
+        # condition for a word a model has never met.
+        texts += [r.answer for r in records] + [getattr(r, fout) for r in records]
+    if args.ask:
+        # Every split's query and answer, because a model has to be able to
+        # *read* what the store hands it. The embeddings of words that occur
+        # only in a held-out rule are untrained, which is the honest condition
+        # for a symbol a model has no habits about — but it can at least be
+        # tokenised, and a model that cannot carry such a symbol across is
+        # failing at instantiation rather than at its tokeniser.
+        texts += [r.query for r in records] + [r.answer for r in records]
+    vocab = Vocab(texts)
+    held = held_names(splits)
+    if args.corpus == "world":
+        for name in held:
+            for r in splits[name]:
+                for f in (fin, fout):
+                    missing = [t for t in tokens(getattr(r, f)) if t not in vocab.stoi]
+                    assert not missing, f"{name} uses tokens unseen in training: {missing}"
 
-    model = GPT(len(vocab.itos), args.d, args.layers, args.heads, max_len=96, dropout=args.dropout).to(device)
+    handed = args.corpus == "basics"
+    max_len = args.max_len or (320 if args.ask else (192 if handed else 96))
+    model = GPT(len(vocab.itos), args.d, args.layers, args.heads, max_len=max_len, dropout=args.dropout).to(device)
     params = sum(p.numel() for p in model.parameters())
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
     steps = args.epochs * math.ceil(len(splits["train"]) / args.batch)
@@ -317,7 +698,7 @@ def main() -> None:
     for epoch in range(args.epochs):
         model.train()
         total = count = 0
-        for ids, mask in make_batches(splits["train"], vocab, args.form, args.batch, rng):
+        for ids, mask in make_batches(splits["train"], vocab, args.form, args.batch, rng, args.ask, handed):
             ids, mask = ids.to(device), mask.to(device)
             logits = model(ids[:, :-1])
             loss = F.cross_entropy(logits[mask[:, :-1]], ids[:, 1:][mask[:, :-1]])
@@ -332,15 +713,27 @@ def main() -> None:
             print(f"epoch {epoch + 1:3}  loss {total / count:.4f}  {time.time() - t0:.0f}s", flush=True)
 
     results = {"args": vars(args), "params": params, "train_seconds": round(time.time() - t0, 1)}
-    for name in ("test_iid", "test_role", "test_combo"):
+    for name in held:
         rows = splits[name]
-        prompts = [[vocab.stoi[BOS]] + vocab.encode(getattr(r, fin)) + [vocab.stoi[SEP]] for r in rows]
-        preds = [detokenize(p) for p in generate(model, vocab, prompts, device)]
-        results[name] = evaluate(rows, preds, args.form)
+        if args.ask:
+            fetched = generate_asking(model, vocab, rows, store, device, args.form, seed=args.seed)
+            results[name] = evaluate_asking(rows, fetched, args.form)
+        else:
+            prompts = [parts(r, vocab, args.form, False, handed)[0][0] for r in rows]
+            preds = [detokenize(p) for p in generate(model, vocab, prompts, device)]
+            core = parse(basics.core_rules()) if handed else None
+            results[name] = evaluate(rows, preds, args.form, core)
+            if handed:
+                results[name]["accuracy_scrambled"] = _scrambled(
+                    model, vocab, rows, device, args.form, args.seed
+                )
         line = {k: v for k, v in results[name].items() if k not in ("examples", "predictions")}
         print(name, json.dumps(line), flush=True)
 
-    out = Path(args.out) / f"{args.form}-seed{args.seed}.json"
+    arm = "" if args.invariant == "off" else f"-{args.invariant}"
+    asking = "-ask" if args.ask else ""
+    which = "" if args.corpus == "world" else f"-{args.corpus}"
+    out = Path(args.out) / f"{args.form}{which}{asking}{arm}-seed{args.seed}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(results, indent=2, ensure_ascii=False))
     print(f"wrote {out}  ({params:,} parameters)")
