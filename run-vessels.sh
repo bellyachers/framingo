@@ -10,9 +10,10 @@
 # The second arm trains the same way and is only evaluated differently, so the
 # two are the same model meeting two different worlds, not two models.
 cd "$(dirname "$0")"
+mkdir -p runs
 for flag in "" "--empty-store"; do
   echo "=== ${flag:-store holds one container} ==="
   uv run python -u experiments/train.py --corpus vessels --ask --form tagged \
     --train 8000 --test 500 --epochs 25 --device "${DEVICE:-cpu}" --seed 0 \
-    ${flag} --out runs/vessels 2>&1 | grep -Ev "^warning|UserWarning|  cpu ="
+    ${flag} --out runs/vessels
 done
