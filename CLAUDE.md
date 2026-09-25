@@ -54,7 +54,13 @@ The same applies to the test set. A corpus built to measure whether a model
 uses what it fetched turned out to need the fetch in 24% of its examples, so
 the headline figure was two thirds a measurement of something else. Split the
 result by whether the thing being tested was in play, and report the split.
-**対照も、テスト集合も、それが何を見て何を試しているかを数えるまでは、そう呼べない。**
+
+And count how many distinct situations the world holds before drawing a
+corpus from it. One world held 2,916 and a run asked for 8,500; the builder,
+which discards repeats, drew for ever. Twenty minutes of CPU at 100% with no
+epoch printed is what a slow model looks like too.
+**対照も、テスト集合も、それが何を見て何を試しているかを数えるまでは、そう呼べない。
+世界が相異なる状況を何通り持つかも、そこから引く前に数える。**
 
 **Quote a detection rate with a false-alarm rate or not at all.**
 An empty core flags everything, so it "detects" 100% of fabrications while
