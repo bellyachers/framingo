@@ -121,3 +121,11 @@ def test_held_back_containers_never_train():
     records = vessels.build(n_train=200, n_iid=20, n_unseen=20, seed=0)
     trained = {n for r in records if r.split == "train" for n in r.names.values()}
     assert not (trained & vessel_unseen)
+
+
+def test_a_kind_of_container_is_not_itself_a_container():
+    """`Any.Vessel.Thing` asks for one chosen from the set, and `Clay-Vessel`
+    is what a vessel is, not a vessel."""
+    for one, meaning, handed, entries in drawn(20):
+        kind = meaning.replace(one.vessel, one.vessel_class)
+        assert not grade(kind, handed + [entries[one.vessel]]).ok

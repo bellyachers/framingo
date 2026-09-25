@@ -387,9 +387,16 @@ def _supply(
     gaps = [(k, want) for k, v in event.slots if (want := _wanted(v)) is not None]
     if not gaps:
         return [event]
+    # A class is something other things are; an individual is something nothing
+    # is. `Any.` asks for one chosen from the set (spec ch.3 §4.1), so the set
+    # is the members, and `Clay-Vessel` — which is what a vessel is, not a
+    # vessel — is not one of them.
+    kinds = {k for of in classes.values() for k in of}
     out = [event]
     for key, want in gaps:
-        members = sorted(w for w, of in classes.items() if set(want) <= of | {w})
+        members = sorted(
+            w for w, of in classes.items() if w not in kinds and set(want) <= of | {w}
+        )
         if not members:
             return []
         grown = []
