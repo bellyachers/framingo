@@ -9,3 +9,6 @@ data/
 *.pt
 *.ckpt
 runs/
+JOURNAL.md
+journal/
+.claude/
