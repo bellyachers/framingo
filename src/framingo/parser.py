@@ -6,7 +6,7 @@ is listed in ``SPEC_DEVIATIONS`` so that the gap between the grammar and the
 examples stays visible instead of being silently absorbed.
 
 Newlines are whitespace. A statement ends where its pipeline cannot continue,
-that is, at the first event not followed by ``->`` or ``!>``; this is what lets
+that is, at the first event not followed by ``->``, ``!>`` or ``&>``; this is what lets
 one code block hold several statements and one statement span blank lines.
 """
 
@@ -54,12 +54,18 @@ class Token:
     column: int
 
 
-_SEG = r"[A-Za-z0-9_]+(?:-[A-Za-z]+)*"
+# A leading apostrophe marks a word the model does not hold: a name, or any
+# term outside the instinct vocabulary (spec ch.2). The mark is morphological
+# on purpose — Lojban separates its root words from its borrowings and names by
+# shape, and shape is what lets a parser sort them without judgement. Because
+# the parser can tell, resolving such a word is not something a model has to
+# remember to do; it is done before the model sees anything.
+_SEG = r"'?[A-Za-z0-9_]+(?:-[A-Za-z]+)*"
 _TOKEN_RE = re.compile(
     rf"""
     (?P<COMMENT>//[^\n]*)
   | (?P<SPACE>[ \t\r\n]+)
-  | (?P<ARROW>->|!>)
+  | (?P<ARROW>->|!>|&>)
   | (?P<LABEL>[A-Za-z_][A-Za-z0-9_]*:)
   | (?P<WORD>!?{_SEG}(?:\.{_SEG})*(?:<[A-Za-z0-9]+>)?(?:\[[0-9]+\]|\#[0-9]+)?)
   | (?P<LPAREN>\()

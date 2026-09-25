@@ -206,6 +206,89 @@ Action: Push agt:Robot tgt:Door goal:(State tgt:Door is:Open)
 
 **JA** — このアクションが実行された後、後述する因果結合子によって「実際にドアが開いたか（成功）」あるいは「鍵がかかっていて開かなかったか（失敗）」が対比される。これにより、モデルは「試み（Attempt）」と「結果（Outcome）」のギャップを認知できるようになる。
 
+## 4bis. Words the Model Does Not Hold: the Mark `'` / モデルが持たない語：印 `'`
+
+**EN** — A model's vocabulary is finite. The world's is not. Names in
+particular are arbitrary, unbounded and particular: no amount of reasoning
+yields "John is a human", and no training set can contain every name there
+will be.
+
+Framingo therefore divides its words in two, **and marks the division in the
+orthography**.
+
+```
+Cut agt:'John tgt:Big.Red.Apple tool:Knife
+```
+
+Here `'John` lies outside the instinct vocabulary and is fetched; `Cut`, `Big`,
+`Red`, `Apple` and `Knife` are held.
+
+- **Instinct vocabulary** — unmarked. Roughly the size of Lojban's gismu
+  inventory: the words a model is trained on and holds in its weights.
+  `Cut`, `Big`, `Human`, `Apple`. A model is expected to know these the way any
+  language model knows a word, from use.
+- **Outside it** — marked with a leading `'`. Names, borrowings, anything the
+  vocabulary does not cover. A model holds none of them.
+
+The mark is morphological on purpose. Lojban separates root words, borrowings
+and names **by shape**, and shape is what lets a parser sort them without
+knowing anything. Here it has a sharper consequence: **because the mark is
+visible before the word is understood, resolving it is not something a model
+must remember to do.** A parser fetches every marked word and hands the results
+over with the input, so a model cannot fail to look one up. What would
+otherwise be a habit — and a habit that requires judging whether one already
+knows a word, which is the judgement models are worst at — becomes a mechanical
+step that happens before the model sees anything.
+
+What comes back is a paraphrase **into the instinct vocabulary**: `'John` is a
+human, `'Quokka` is a small animal that eats grass. So a model reasons in the
+words it holds, always, and a word it has never met is no harder than one it
+has met a thousand times.
+
+> **A consequence worth stating.** If what a model may emit is limited to the
+> instinct vocabulary plus the words handed to it, then inventing a name is not
+> merely detectable — it is **impossible**. A model that holds no names cannot
+> fabricate one. The other half of the Grounding Constraint, over relations
+> between words, remains a check rather than a guarantee.
+
+**JA** — モデルの語彙は有限である。世界の語彙は有限ではない。とりわけ名前は恣意的で
+無限で個別的であり、「John は人間である」はどれだけ推論しても出てこないし、
+これから現れるすべての名前を含む訓練集合も存在しない。
+
+そこで Framingo は語を二つに分け、**その区別を表記に刻む。**
+
+```
+Cut agt:'John tgt:Big.Red.Apple tool:Knife
+```
+
+ここで `'John` は本能語彙の外にあり取得される。`Cut`・`Big`・`Red`・`Apple`・`Knife`
+は保持される。
+
+- **本能語彙** —— 無印。Lojban の gismu 目録とおよそ同程度の規模。モデルが訓練を
+  通じて重みに保持する語。`Cut`、`Big`、`Human`、`Apple`。通常の言語モデルが語を
+  知るのと同じ仕方で、用例から知っていることを期待する。
+- **その外** —— 先頭に `'` を付す。名前、借用語、語彙が覆わないもの一切。
+  モデルはこれらを一つも保持しない。
+
+印を形態的に置くのは意図的である。Lojban は語根・借用語・名前を**形で**分けており、
+形であるからこそパーサーは何も知らずに仕分けできる。ここではそれがより鋭い帰結を持つ。
+**印は語を理解する前に見えるので、それを解決することはモデルが「忘れずに行う」べき
+ことではなくなる。** パーサーが印の付いた語をすべて引き、その結果を入力とともに渡す。
+モデルは引き忘れることができない。**さもなくば習慣になっていたもの —— しかも
+「その語を既に知っているか」という、モデルが最も苦手とする判断を要する習慣 —— が、
+モデルが何かを見る前に済んでいる機械的な一段になる。**
+
+返ってくるのは**本能語彙への**言い換えである。`'John` は人間である、`'Quokka` は草を
+食べる小さな動物である。ゆえにモデルは常に自分が保持する語で考え、**一度も出会った
+ことのない語が、千回出会った語より難しいということがない。**
+
+> **述べておくべき帰結。** モデルが出力しうる語を「本能語彙 + 渡された語」に限るなら、
+> **名前の捏造は検出可能になるのではなく、不可能になる。** 名前を一つも持たない
+> モデルは、名前を捏造できない。接地制約のもう半分、すなわち語と語の関係については、
+> 依然として保証ではなく検査である。
+
+---
+
 ## 5. TAM (Tense, Aspect, Modality) and Quantitative Modifiers as Slots / TAM（時制・相・法）および定量的修飾子のスロット化
 
 **EN** — TAM (tense, aspect, modality), the greatest breeding ground of irregularity in natural language, never causes the verb to change form (conjugate) in Framingo; **all of it is treated equally as independent modifier slots.**
@@ -373,7 +456,7 @@ Statement       ::= Prefix ":" EventSequence
 Prefix          ::= "RULE" | "FACT" | "HYPO" | "QUERY"
 
 EventSequence   ::= Event ( Connector Event )*
-Connector       ::= "->" | "!>"
+Connector       ::= "->" | "!>" | "&>"
 
 Event           ::= Condition? PredicateClause
 Condition       ::= "when:" "(" EventSequence ")"
@@ -800,7 +883,7 @@ The next chapter (chapter 4) proceeds to specify the dynamic combination system 
 
 *Framingo Design Specification and Development Charter / Framingo 設計仕様・開発憲章*
 
-## 1. The Mechanics of Causal Connectives: Occurrence (`->`) and Prevention (`!>`) / 因果結合子の力学：生起（`->`）と阻止（`!>`）
+## 1. The Mechanics of the Connectives: Occurrence (`->`), Prevention (`!>`) and Simultaneity (`&>`) / 結合子の力学：生起（`->`）・阻止（`!>`）・同時（`&>`）
 
 **EN** — Complex-sentence structures in natural language (because, therefore, so, but, although, etc.) intricately mix the speaker's emotional emphasis with logical relations, and bring very high polysemy to the task of extracting the direction of causation by machine. In the sentence "I pushed the door but it did not open", for example, natural language uses an adversative conjunction (but) to express the speaker's disappointment or surprise; yet the mechanical fact occurring in the physical world is an objective causal misfire: "although external force (Push) was applied, the state transition (Open) was prevented."
 
@@ -813,7 +896,19 @@ This language (Framingo) reduces the dynamic temporal development and mechanical
 ```
 [Cause_Event] -> [Effect_Event]   // Positive causation / 因果の生起（Positive Causation）
 [Cause_Event] !> [Prevented_Event] // Negative causation, prevention / 因果の阻止・不発（Negative Causation / Prevention）
+[Result_Event] &> [Result_Event]  // No causation: both hold at once / 因果なし。同時に成立（Simultaneity）
 ```
+
+**EN** — The reduction to two stands: *causal* linkage between events is `->`
+and `!>`, and there is no third direction for a cause to take. `&>` is not a
+third causal connective. It is the case the two leave out — two events between
+which there is no causal linkage at all — and it is neither directed nor
+causal. Section 1.3 states why the language cannot do without it.
+
+**JA** — 二つへの還元は保たれる。事象間の**因果的**な結びつきは `->` と `!>` で
+あり、因果が取りうる第三の向きは存在しない。`&>` は第三の因果結合子ではない。
+**二つが取りこぼしていた場合** —— 事象の間に因果的な結びつきが一切ない場合 ——
+であり、有向でも因果的でもない。1.3節がなぜこれなしでは済まないかを述べる。
 
 ### 1.1 The Occurrence Connective (`->`): Necessity of State Transition / 生起結合子（`->`）：状態遷移の必然性
 
@@ -859,6 +954,78 @@ In conventional symbolic AI and simple datasets, describing "what did not happen
 **EN** — By introducing `!>`, the model can learn not only "the paths of successful causation" but also "the boundaries of blocked causation", as a clear contrast (contrastive learning).
 
 **JA** — `!>` を導入することにより、モデルは「成功した因果のパス」だけでなく、「遮断された因果の境界線」を明確な対比（Contrastive Learning）として学習することが可能になる。
+
+### 1.3 The Joint Connective (`&>`): Results That Hold at Once / 同時結合子（`&>`）：同時に成り立つ結果
+
+**EN** — The symbol `&>` expresses that "both sides hold at one and the same
+moment, and neither brought the other about."
+
+```
+Action: Carry agt:John tgt:Apple dst:Kitchen
+  -> At tgt:Apple loc:Kitchen &> At tgt:John loc:Kitchen
+```
+
+John carried the apple to the kitchen. The apple is in the kitchen and John is
+in the kitchen — one event seen from two sides. Neither arrival caused the
+other.
+
+Without this connective that sentence cannot be written down truthfully. `->`
+is the only forward connective, and section 1.1 defines it as asserting that
+the left event *directly brought about* the right one, so writing the pair with
+`->` claims that the apple's arrival caused John's. **A generator with two
+simultaneous consequences would have to state a falsehood.** That is not a
+stylistic loss: a verifier that reads `->` as the specification defines it will
+then enforce an order the world does not have, and reject a correct answer that
+names the two arrivals the other way round.
+
+The connective is **n-ary and unordered**: a chain joined by `&>` is one group
+of events holding at once, and the order in which its members are written
+carries nothing. A group is joined to what precedes it by the connective that
+opens it, and every member of one group stands to every member of the next
+exactly as that connective says.
+
+Note what `&>` does *not* mean. It is not "and then", which is `->`; nor is it
+mere conjunction of unrelated facts, which needs no connective because separate
+statements already do it. It marks results of **one** cause that arrive
+together.
+
+> This is the reason chapter 2 makes slot order carry nothing within an event.
+> The same freedom was missing *between* events, and a frame-based language
+> cannot afford that asymmetry.
+
+**JA** — 記号 `&>` は、「両辺が同一の瞬間に成り立ち、いずれも他方を引き起こして
+いない」ことを表す。
+
+```
+Action: Carry agt:John tgt:Apple dst:Kitchen
+  -> At tgt:Apple loc:Kitchen &> At tgt:John loc:Kitchen
+```
+
+ジョンはリンゴを台所へ運んだ。リンゴは台所にあり、ジョンも台所にいる —— 一つの
+出来事を二つの側から見たものである。どちらの到着も他方を引き起こしていない。
+
+この結合子なしには、この文を真として書き下せない。前向きの結合子は `->` しかなく、
+1.1節はそれを「左辺が右辺を**直接引き起こした**」と定義している。したがってこの対を
+`->` で書けば、「リンゴの到着がジョンの到着を引き起こした」と主張することになる。
+**同時に生起する二つの帰結を持つ生成器は、偽を述べるほかなくなる。**
+
+これは文体上の損失ではない。`->` を仕様通りに読む検証器は、そのとき**世界に存在
+しない順序を強制し**、二つの到着を逆順に述べた正しい答えを却下する。
+
+この結合子は **n 項かつ無順序**である。`&>` で連結された連鎖は、同時に成立する
+事象の**一つの群**であり、その構成員をどの順に書くかは何も担わない。群は、それを
+開いた結合子によって直前のものと結ばれ、ある群の各構成員は次の群の各構成員に
+対して、その結合子が述べる通りの関係に立つ。
+
+`&>` が意味**しない**ものを断っておく。「そして次に」ではない。それは `->` である。
+無関係な事実の並置でもない。それには結合子は要らず、別々の文がすでにそれを行う。
+これが標示するのは、**一つの**原因から同時に到達した結果である。
+
+> 第2章が事象**内部**のスロット順序に何も担わせないのは、これと同じ理由による。
+> 事象**間**にはその自由が欠けていた。フレームに基づく言語が、その非対称を
+> 抱えたままでいることはできない。
+
+---
 
 ## 2. Preconditions and Environmental Context: `when:` (Preconditions & Affordances) / 前提条件と環境コンテキスト：`when:`（Preconditions & Affordances）
 
@@ -1114,7 +1281,7 @@ Prefix              ::= "RULE" | "FACT" | "HYPO" | "QUERY"
 ConditionClause     ::= "when:" "(" StateExpression ")"
 
 Pipeline            ::= Event ( Connector Event )*
-Connector           ::= "->" | "!>"
+Connector           ::= "->" | "!>" | "&>"
 
 Event               ::= ActionClause | ResultClause | StateExpression
 
@@ -1132,6 +1299,7 @@ SlotValue           ::= Concept
                       | "?"
 
 Concept             ::= ( Determiner "." )? ( Modifier "." )* BaseEntity ( "." Part )? ( "<" Index ">" )?
+BaseEntity          ::= ( "'" )? Identifier      // "'" marks a word outside the instinct vocabulary
 Determiner          ::= "Every" | "Any" | "Some" | "This" | "No"
 Index               ::= [A-Z0-9]+
 ```

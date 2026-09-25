@@ -24,7 +24,17 @@ SLOT_KEYS = frozenset(
 )
 DETERMINERS = frozenset({"Every", "Any", "Some", "This", "No"})
 SUFFIXES = ("-able", "-prone", "-ed")
-CONNECTORS = ("->", "!>")
+
+# A word the model does not hold. Marked by shape so that a parser can sort it
+# out without judging whether it happens to know the word: everything with the
+# mark is fetched, everything without it is instinct. See the working journal
+# on the two lookups.
+OUTSIDE = "'"
+
+
+def is_instinct(word: str) -> bool:
+    return not word.startswith(OUTSIDE)
+CONNECTORS = ("->", "!>", "&>")
 
 
 @dataclass(frozen=True)
