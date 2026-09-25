@@ -747,6 +747,57 @@ RULE: Action: Drop tgt:Every.Break-prone.Thing -> Result: Become agt:It.Piece
 
 **JA** — 左辺で `Every.` によって束縛された変数は、後述する照応代名詞 `It` を通じて右辺へ安全に束縛を引き継ぐ。
 
+### 4.3 `Any.` on the Right-hand Side: Naming What Is Missing / 右辺の `Any.` —— 欠けているものを名指す
+
+**EN** — `Any.` on the left-hand side of a rule is a class pattern like any
+other: `tgt:Any.Knife` and `tgt:Every.Knife` both match a knife. On the
+**right-hand side** it does something no other determiner does. It says: *an
+individual is required here, and the rule does not say which.*
+
+```
+RULE: Action: Carry agt:Every.Animate.Thing tgt:Every.Liquid.Thing
+      -> Result: In tgt:It loc:Any.Vessel.Thing
+```
+
+Read this as "carrying a liquid puts it in some vessel." The rule states what
+kind of thing is wanted and cannot state which one, because which one is a fact
+about the situation and not about carrying liquids. It is therefore the place
+where a derivation discovers that it needs something the input never mentioned
+— the one kind of lookup that cannot be triggered by the shape of a word,
+because there is no word.
+
+**Two consequences for the verifier.** An `Any.` left standing in a conclusion
+licenses nothing by itself; what it licenses is that conclusion **about each
+individual of that class which is already known**. So a rule that wants a
+vessel where no vessel has been supplied fires not at all, and a derivation
+that names a vessel nobody supplied is ungrounded — not because the rule
+objects, it asked only for *a* vessel, but because no fact of that shape was
+ever licensed.
+
+**JA** — 規則の左辺の `Any.` は他と同じクラスパターンである。`tgt:Any.Knife` も
+`tgt:Every.Knife` もナイフに一致する。**右辺**に置かれたとき、それは他のどの
+限定詞もしないことをする。**「ここに個体が要る。どれかは規則が言わない」**と
+述べるのである。
+
+```
+RULE: Action: Carry agt:Every.Animate.Thing tgt:Every.Liquid.Thing
+      -> Result: In tgt:It loc:Any.Vessel.Thing
+```
+
+「液体を運ぶとは、それを何らかの容器に入れることである」と読む。規則は**どんな種類
+のものが要るか**を述べ、**どれかは述べられない。** どれかは状況についての事実で
+あって、液体を運ぶことについての事実ではないからである。
+
+したがってここが、導出が**入力に一度も現れなかったものを必要としていると気づく**
+場所である。語の形では引き起こせない唯一の参照 —— **語が無いのだから。**
+
+**検証器にとっての帰結が二つある。** 帰結に残った `Any.` はそれ自体では何も許可
+しない。許可するのは、**既に知られているそのクラスの各個体について**の、その帰結で
+ある。よって容器が一つも渡されていなければ規則は**まったく発火せず**、誰も渡して
+いない容器を名指した導出は**接地しない。** 規則が文句を言うのではない —— 規則は
+「容器を一つ」としか言っていない —— **そういう形の事実が一度も許可されなかった**
+からである。
+
 ## 5. The Anaphora System and Reference Resolution / 照応システムと参照解決（Anaphora & Reference）
 
 **EN** — "Anaphoric pronouns", the greatest breeding ground of ambiguity in natural language, are redefined in Framingo as a very clear reference system.

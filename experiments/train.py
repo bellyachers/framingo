@@ -725,6 +725,11 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
     # over all of them would dilute it with examples that had nothing to lie
     # about, and a number diluted that way looks like robustness.
     handed_back = lied_correct = lied_same = lied_followed = 0
+    # Marked words the prediction names that nobody supplied. This is the
+    # number the whole business is for: a model that needs something it has not
+    # got and writes a name for it anyway is doing what a language model does
+    # when it needs a citation and has none.
+    invented = 0
     examples, out = [], []
     for r, got in zip(rows, fetched):
         # What should have been asked about: the marked words the derivation
@@ -737,6 +742,8 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
         asked_right += got["asked_about"] == wanted
         full = f"{getattr(r, fin)} {got['pred']}"
         out.append({k: got[k] for k in ("head", "handed", "tail", "pred", "asked_about")})
+        supplied = set(_MARK.findall(getattr(r, fin) + " " + r.answer + " " + got["handed"]))
+        invented += bool(set(_MARK.findall(got["pred"])) - supplied)
         if got["handed"] and "pred_lied" in got:
             handed_back += 1
             lied_same += got["pred_lied"] == got["pred"]
@@ -804,16 +811,38 @@ def evaluate_stopping(rows, fetched: list[dict], form: str, core, tails=None) ->
         "accuracy_when_handed_lies": (lied_correct / handed_back) if handed_back else None,
         "unmoved_by_the_lie": (lied_same / handed_back) if handed_back else None,
         "followed_the_lie": (lied_followed / handed_back) if handed_back else None,
+        "named_what_nobody_supplied": invented / n,
         "examples": examples,
         "predictions": out,
     }
 
 
-def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
+def evaluate(rows, predictions: list[str], form: str, core=None, book: str = "") -> dict:
+    """Grade predictions, and where a correct one fails to ground, say why.
+
+    `false_alarm_rate` is the share of benign outputs the verifier flags, and
+    its name assumes that a correct answer ought to ground. The charter assumes
+    the opposite: correctness and groundedness are two signals, and **correct
+    but untraceable** is a category the arrangement exists to count, not a
+    defect of the verifier. That never showed while the number was zero, which
+    it is wherever the model looks its words up. An arm that does not look them
+    up puts a fifth of its correct answers there, and calling those false
+    alarms would report the verifier working as the verifier failing.
+
+    So the two are separated by asking a second question of each one: would it
+    have grounded had the dictionary been in the context? If it would, the flag
+    was about a lookup that never happened, and it is a true finding. If it
+    would not, something in the core or the checker cannot derive a correct
+    derivation, and that is a defect — of which three have been found so far,
+    every one by measuring rather than by reading output. `book` is what makes
+    the second question askable; without it the two stay added together.
+    """
     fin, fout = fields(form)
     n = len(rows)
     correct = parse_fail = grounded = 0
     fabricated = fabricated_flagged = omitted = benign_flagged = 0
+    unfetched = underivable = 0
+    whole = list(parse(book)) if book else []
     examples, predictions_out = [], []
     for r, pred in zip(rows, predictions):
         full = f"{getattr(r, fin)} {pred}"
@@ -834,13 +863,29 @@ def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
             context = [action] + (
                 list(parse(_plainly(r.answer, names))) if getattr(r, "answer", "") else []
             )
-            report = check([plain], context, CORE if core is None else core)
+            rules = CORE if core is None else core
+            report = check([plain], context, rules)
             grounded += report.ok
+
+            def split() -> None:
+                # the same claim, with everything the dictionary holds in front
+                # of it. Grounding now means the flag was about a lookup that
+                # did not happen.
+                nonlocal unfetched, underivable
+                if check([plain], context + whole, rules).ok:
+                    unfetched += 1
+                else:
+                    underivable += 1
+
             if ok:
                 benign_flagged += not report.ok
+                if not report.ok and whole:
+                    split()
             elif is_omission(full, r.meaning):
                 omitted += 1
                 benign_flagged += not report.ok
+                if not report.ok and whole:
+                    split()
             else:
                 fabricated += 1
                 fabricated_flagged += not report.ok
@@ -862,6 +907,15 @@ def evaluate(rows, predictions: list[str], form: str, core=None) -> dict:
             detection_rate=(fabricated_flagged / fabricated) if fabricated else None,
             false_alarm_rate=(benign_flagged / benign) if benign else None,
         )
+        if whole:
+            result.update(
+                # right, but not traceable, because the word was never fetched.
+                # The verifier is correct and the name above is not.
+                ungrounded_though_correct=unfetched / benign if benign else None,
+                # right, traceable in principle, and flagged anyway. This is
+                # the only one that is a false alarm.
+                flagged_though_derivable=underivable / benign if benign else None,
+            )
     result["examples"] = examples
     result["predictions"] = predictions_out
     return result
@@ -1083,7 +1137,10 @@ def main() -> None:
             prompts = [parts(r, vocab, args.form, False, handed)[0][0] for r in rows]
             preds = [detokenize(p) for p in generate(model, vocab, prompts, device)]
             core = parse(core_text()) if handed else None
-            results[name] = evaluate(rows, preds, args.form, core)
+            results[name] = evaluate(
+                rows, preds, args.form, core,
+                book="\n".join(entries.values()) if handed else "",
+            )
             if handed:
                 results[name]["accuracy_scrambled"] = _scrambled(
                     model, vocab, rows, device, args.form, args.seed, name_classes

@@ -269,6 +269,20 @@ def build(n_train: int = 8000, n_iid: int = 1000, n_unseen: int = 1000, seed: in
         meaning = str(drawn.meaning())
         texts = [action, handed_in, meaning, head, handed_mid, tail]
         (action, handed_in, meaning, head, handed_mid, tail), renamed = normalise(texts)
+        # The container is always the third marked word, so `normalise` would
+        # always call it `'C` and a model could write `'C` without having read
+        # anything. Which letter it gets is drawn instead, out of a range the
+        # carrier and the thing carried never reach. Now the only way to know
+        # what the answer was called is to have read the answer, and a model
+        # asked with an empty store has to invent a letter to write at all —
+        # which is the number the whole arm is for.
+        letter = f"'{rng.choice('DEFGHIJK')}"
+        swap = {"'C": letter}
+        action, handed_in, meaning, head, handed_mid, tail = (
+            _MARKED.sub(lambda m: swap.get(m.group(0), m.group(0)), t)
+            for t in (action, handed_in, meaning, head, handed_mid, tail)
+        )
+        renamed = {swap.get(k, k): v for k, v in renamed.items()}
         return Record(
             split=split, meaning=meaning, tagged_in=action, tagged_out=tail,
             word_order_in=action, word_order_out=tail, passive=False,
