@@ -9,7 +9,7 @@
 #
 # The second arm trains the same way and is only evaluated differently, so the
 # two are the same model meeting two different worlds, not two models.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 mkdir -p runs
 for flag in "" "--empty-store"; do
   echo "=== ${flag:-store holds one container} ==="

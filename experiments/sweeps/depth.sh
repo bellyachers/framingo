@@ -13,7 +13,7 @@
 # what it needs is width, which is where a lookup table would live. If it is
 # the other way round the collapse was about depth and has little to do with
 # holding a table at all.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for size in "128 2" "64 3"; do
   set -- ${=size}
   for flag in "--ask" ""; do

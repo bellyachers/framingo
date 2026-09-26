@@ -15,7 +15,7 @@
 #
 # 160 classes took sixty; 320 is twice the world, so 120 is the linear
 # prediction and 400 is the ceiling this asks about.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for e in 60 120 250 400; do
   echo "=== no-ask classes 320 epochs $e ==="
   uv run python -u experiments/train.py --corpus scaled --form tagged \

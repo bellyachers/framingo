@@ -13,7 +13,7 @@
 # If this arm solves it, the lying result means what it was read to mean: two
 # routes, and the model took the short one. If it does not, the lookup was
 # necessary after all and the headline is wrong.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 uv run python -u experiments/train.py --corpus scaled --form tagged \
   --classes 10 --verbs 4 --marked 1.0 --train 8000 --test 1000 --epochs 20 \
   --device "${DEVICE:-cpu}" --seed 0 --out runs/noask-scaled > runs/noask-scaled.log 2>&1

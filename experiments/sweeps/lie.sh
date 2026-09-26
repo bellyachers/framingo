@@ -9,7 +9,7 @@
 #
 # CPU on purpose: an MPS sweep is already running and is worth more than the
 # speed of this one.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for e in 3 8 20 50; do
   echo "=== epochs $e ==="
   uv run python experiments/train.py --corpus scaled --ask --form tagged \

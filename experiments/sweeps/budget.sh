@@ -23,7 +23,7 @@
 #   both hold, or both fall together
 #       -> the budget is not tight in the way this assumes; say so and stop
 #          reporting the twenty-epoch parting as meaning anything
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for n in 20 40 80 160 320; do
   for flag in "--ask" ""; do
     echo "=== classes $n ${flag:-no-ask} ==="

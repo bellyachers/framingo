@@ -12,7 +12,7 @@
 #   it does not recover          -> capacity, and proposition 1 gets its first
 #       number: 160 classes and 486 rules need more than 190k parameters to
 #       hold, and 190k to fetch.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for e in 20 60 150; do
   echo "=== no-ask d=64 epochs $e ==="
   uv run python -u experiments/train.py --corpus scaled --form tagged \

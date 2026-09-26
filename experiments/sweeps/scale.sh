@@ -21,7 +21,7 @@
 # ceasing to read what it asked for and answering from the weights instead,
 # and it is the point at which the arrangement stops being what it claims.
 # Nothing else in the run reports it, because the accuracy would not move.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for n in 10 20 40 80 160; do
   for flag in "--ask" ""; do
     echo "=== classes $n ${flag:-no-ask} ==="

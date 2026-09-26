@@ -26,7 +26,7 @@
 #       -> the task is too easy at any size to separate them. Say so.
 #
 # The world is held at 160 classes, where the tables are largest.
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/../.."   # the repository root
 for size in "128 3" "64 2" "48 2" "32 1" "16 1"; do
   set -- ${=size}
   for flag in "--ask" ""; do
