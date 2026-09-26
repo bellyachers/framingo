@@ -124,6 +124,11 @@ choosing one.
   the sweep has that string in its own command line. Two sweeps sat idle for
   twenty minutes behind a monitoring shell. The same match then made a running
   job look finished and a live one look dead.
+- **Count what a worktree holds that git does not, before removing it.**
+  `git worktree remove --force` deletes ignored files too, and `runs/` is
+  ignored. Needing `--force` at all is the signal that something in there is
+  not tracked; `git status --ignored --short` says what. A night of run
+  outputs went this way, recoverable only by re-running them.
 - **Look twice, with a gap, before concluding a job has stopped.** One reading
   of a log tail says where a job was, not that it is still there. A run at
   epoch 90 was written up as having died; it was at epoch 115.
