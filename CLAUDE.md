@@ -155,7 +155,7 @@ alternatives and the argument that decided against them belong in the body.
 
 Sign off with:
 
-    Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+    Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
 
 ## After cloning / clone 後に必須
 
