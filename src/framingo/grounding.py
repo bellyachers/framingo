@@ -436,7 +436,22 @@ def _bare(event: Event) -> Event:
 
 
 def _first_premise(rule: Statement) -> Event:
-    return rule.condition.events[0] if rule.condition is not None else rule.pipeline.events[0]
+    """The premise a rule is indexed on: its own action, always.
+
+    A rule with a `when:` used to be indexed on the first event of the
+    condition, which is a `State` — the least selective verb there is, since
+    every fetched class membership is one. Every conditional rule therefore sat
+    in the catch-all bucket and was tried against every state fact in the
+    context. On a world of four hundred conditional rules that put one grounding
+    check at 609ms against 1.6ms for a world without them, which is slower than
+    the training it was meant to grade.
+
+    The action is what fires the rule — the module says so where it orders the
+    chain a rule licenses — and `Score` is worth vastly more as a key than
+    `State`. The condition is still a premise and still has to match; it is
+    only no longer what the rule is filed under.
+    """
+    return rule.pipeline.events[0]
 
 
 def _demanded(premise: Event) -> tuple[object, str | None]:
@@ -454,7 +469,12 @@ def _demanded(premise: Event) -> tuple[object, str | None]:
     targets = premise.get("tgt")
     if len(targets) == 1 and isinstance(targets[0], Concept):
         segments = targets[0].segments
-        if segments and segments[-1] != "Thing":
+        # A bare `It` is as unselective as a class pattern: it stands for
+        # whatever the condition bound, so it demands no particular head. `It`
+        # with something after it — `It.Slice` — does demand that, and keeps
+        # its place in the index. Indexing a conditional rule on its action put
+        # `It` in the key and the rule was never tried at all.
+        if segments and segments[-1] not in ("Thing", "It"):
             return (premise.verb, segments[-1])
     return (premise.verb, None)
 
