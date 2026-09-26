@@ -121,6 +121,15 @@ class Record:
     # nothing, which is a record of a gap in coverage, not a failure to render.
     query: str = ""
     answer: str = ""
+    # Why this situation came out as it did, where a world has more than one
+    # way to produce the same shape of answer — an empty derivation because no
+    # rule matched, because the place was wrong, because the action was
+    # forbidden. Reporting only the average over those says almost nothing,
+    # since a model that writes nothing collects all three. Kept apart from
+    # `query`, which says what the model must ask about and is read elsewhere
+    # as "the first stretch is a question": putting a reason there made the
+    # grader drop every head, and the gold scored 0.438.
+    why: str = ""
     # A derivation that stops part way to look something up. `head` is what the
     # model writes before it has to, `handed` is what comes back, `tail` is the
     # rest. A marked word the model *derived* could not have been fetched in

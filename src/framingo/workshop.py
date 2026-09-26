@@ -69,6 +69,7 @@ derivation is the accuracy, not the checker.
 from __future__ import annotations
 
 import random
+import re
 from dataclasses import dataclass
 
 from .syntax import Concept, Event, Pipeline
@@ -441,3 +442,116 @@ def sample(rng: random.Random, pool: set[str] | None = None) -> Sample:
     events += [ev(step, tgt=C(*grown)) for step in steps]
     return Sample(action, condition, "effect",
                   Pipeline(tuple(events), ("->",) * (len(events) - 1)))
+
+
+# -- the corpus ---------------------------------------------------------------
+
+HELD_BACK = 0.25
+_MARKED = re.compile(r"'[A-Za-z][A-Za-z0-9-]*")
+
+
+def pools(seed: int) -> tuple[set[str], set[str]]:
+    """Names to train on, and a quarter of every group held back."""
+    rng = random.Random(f"{seed}-workshop-names")
+    train: set[str] = set()
+    unseen: set[str] = set()
+    for members in names().values():
+        shuffled = list(members)
+        rng.shuffle(shuffled)
+        cut = max(1, round(len(shuffled) * HELD_BACK))
+        unseen |= set(shuffled[:cut])
+        train |= set(shuffled[cut:])
+    return train, unseen
+
+
+def build(n_train: int = 8000, n_iid: int = 1000, n_unseen: int = 1000, seed: int = 0):
+    """Records in the shape `experiments/train.py --corpus workshop` reads.
+
+    The condition goes in with what the parser hands over, beside the classes
+    it fetched. It is not dictionary knowledge — a thing's condition is a fact
+    about the situation and changes, where a name's material does not — and
+    `dictionary()` does not contain it. It arrives the same way because the
+    model's side of the arrangement is the same: here is what you were given,
+    now derive.
+
+    `why` rides along on each record so that the result can be split by it.
+    An accuracy averaged over these six says almost nothing, since two fifths
+    of them are earned by writing nothing at all.
+    """
+    from .basics import normalise  # noqa: PLC0415
+    from .corpus import Record  # noqa: PLC0415
+    from .render import tagged_event, tagged_pipeline  # noqa: PLC0415
+
+    entries = {}
+    for line in dictionary().splitlines():
+        entries[line.split("tgt:")[1].split()[0]] = line
+    train_pool, unseen_pool = pools(seed)
+    rng = random.Random(seed)
+
+    def record(drawn: Sample, split: str) -> Record:
+        given = [x for x in drawn.words() if x.startswith("'")]
+        target = next(v.segments[0] for k, v in drawn.action.slots if k == "tgt")
+        handed_in = " ".join(
+            [entries[x] for x in dict.fromkeys(given) if x in entries]
+            + [f"FACT: State tgt:{target} is:{drawn.condition}"]
+        )
+        action = tagged_event(drawn.action, rng)
+        out = "" if drawn.result is None else f"-> {tagged_pipeline(drawn.result)}"
+        meaning = str(drawn.meaning())
+
+        # where the derivation stops to look up what it just produced: the
+        # first marked word it writes that nobody handed over
+        seen = set(given)
+        head, handed_mid, tail = out, "", ""
+        if drawn.result is not None:
+            events = list(drawn.result.events)
+            connectors = drawn.result.connectors
+            cut = len(events)
+            for i, event in enumerate(events):
+                fresh = {x for x in _MARKED.findall(str(event)) if x not in seen}
+                if fresh:
+                    cut, seen = i + 1, seen | fresh
+                    break
+            head = f"-> {tagged_pipeline(Pipeline(tuple(events[:cut]), connectors[: cut - 1]))}"
+            handed_mid = " ".join(
+                entries[x] for x in sorted(seen - set(given)) if x in entries
+            )
+            tail = (
+                f"{connectors[cut - 1]} "
+                f"{tagged_pipeline(Pipeline(tuple(events[cut:]), connectors[cut:]))}"
+                if cut < len(events) else ""
+            )
+
+        texts = [action, handed_in, out, meaning, head, handed_mid, tail]
+        (action, handed_in, out, meaning, head, handed_mid, tail), renamed = normalise(texts)
+        return Record(
+            split=split, meaning=meaning, tagged_in=action, tagged_out=out,
+            word_order_in=action, word_order_out=out, passive=False,
+            query="", why=drawn.why, answer=handed_in,
+            head=head, handed=handed_mid, tail=tail, names=renamed,
+        )
+
+    def draw(pool: set[str], seen: set[str], count: int, split: str):
+        out: list = []
+        misses = 0
+        while len(out) < count:
+            drawn = sample(rng, pool)
+            key = str(drawn.meaning()) + drawn.condition
+            if key in seen:
+                misses += 1
+                if misses > 20_000:
+                    raise ValueError(
+                        f"{split}: the world holds fewer than {count} distinct "
+                        f"situations over these names ({len(out)} found)."
+                    )
+                continue
+            misses = 0
+            seen.add(key)
+            out.append(record(drawn, split))
+        return out
+
+    seen: set[str] = set()
+    out = draw(train_pool, seen, n_train, "train")
+    out += draw(train_pool, seen, n_iid, "test_iid")
+    out += draw(unseen_pool, set(), n_unseen, "test_unseen")
+    return out
